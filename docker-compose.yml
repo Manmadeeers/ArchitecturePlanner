@@ -1,0 +1,56 @@
+services:
+  db:
+    build:
+      context: .
+      dockerfile: db/Dockerfile
+    container_name: architectureplanner-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: architecture_planner
+      POSTGRES_USER: architectureplanner
+      POSTGRES_PASSWORD: architectureplanner
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U architectureplanner -d architecture_planner"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: architectureplanner-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - ./backend/.env
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: postgres://architectureplanner:architectureplanner@db:5432/architecture_planner
+      DATABASE_SSL: "false"
+    expose:
+      - "4000"
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    container_name: architectureplanner-nginx
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+      - "20532:20532"
+    volumes:
+      - ./nginx/certs:/etc/nginx/certs:ro
+
+volumes:
+  postgres_data:

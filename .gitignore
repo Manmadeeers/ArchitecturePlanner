@@ -44,3 +44,9 @@ Thumbs.db
 *.sqlite
 *.sqlite3
 *.db
+
+# TLS certificates
+nginx/certs/*.pem
+nginx/certs/*.crt
+nginx/certs/*.key
+!nginx/certs/.gitkeep
