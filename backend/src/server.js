@@ -1,3 +1,5 @@
+require("./loadEnv");
+
 const { createApp } = require("./app");
 
 const PORT = Number(process.env.PORT || 4000);

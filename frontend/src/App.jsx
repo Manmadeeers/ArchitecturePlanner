@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useState, startTransition } from "react";
+import { useAuth0 } from "@auth0/auth0-react";
+
+import { isAuthConfigured } from "./auth-config";
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
 
@@ -21,10 +24,61 @@ const defaultValues = {
 };
 
 export default function App() {
+  return isAuthConfigured ? <AuthenticatedApp /> : <AuthSetupApp />;
+}
+
+function AuthenticatedApp() {
+  const { getAccessTokenSilently, isAuthenticated, isLoading, loginWithRedirect, logout, user } = useAuth0();
+
+  return (
+    <AppShell
+      authMode="configured"
+      getAccessToken={getAccessTokenSilently}
+      isAuthenticated={isAuthenticated}
+      isLoading={isLoading}
+      onLogin={() => loginWithRedirect()}
+      onLogout={() =>
+        logout({
+          logoutParams: {
+            returnTo: window.location.origin,
+          },
+        })
+      }
+      onSignup={() =>
+        loginWithRedirect({
+          authorizationParams: {
+            screen_hint: "signup",
+          },
+        })
+      }
+      user={user || null}
+    />
+  );
+}
+
+function AuthSetupApp() {
+  return (
+    <AppShell
+      authMode="not-configured"
+      getAccessToken={null}
+      isAuthenticated={false}
+      isLoading={false}
+      onLogin={null}
+      onLogout={null}
+      onSignup={null}
+      user={null}
+    />
+  );
+}
+
+function AppShell({ authMode, getAccessToken, isAuthenticated, isLoading, onLogin, onLogout, onSignup, user }) {
   const [questionnaire, setQuestionnaire] = useState([]);
   const [formValues, setFormValues] = useState(defaultValues);
   const [planResponse, setPlanResponse] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [recentPlans, setRecentPlans] = useState([]);
+  const [isLoadingPlan, setIsLoadingPlan] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -41,6 +95,69 @@ export default function App() {
     loadQuestionnaire();
   }, []);
 
+  useEffect(() => {
+    if (authMode !== "configured" || !isAuthenticated || !getAccessToken) {
+      setCurrentUser(null);
+      setRecentPlans([]);
+      return;
+    }
+
+    async function loadProtectedData() {
+      setIsLoadingProfile(true);
+
+      try {
+        const token = await getAccessToken();
+
+        const [profileResponse, recentPlansResponse] = await Promise.all([
+          fetch(`${API_BASE_URL}/auth/me`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+          fetch(`${API_BASE_URL}/plans/recent`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          }),
+        ]);
+
+        const profileData = await profileResponse.json();
+        const recentPlansData = await recentPlansResponse.json();
+
+        if (!profileResponse.ok) {
+          throw new Error(profileData.error || "Could not load the authenticated profile.");
+        }
+
+        if (!recentPlansResponse.ok) {
+          throw new Error(recentPlansData.error || "Could not load recent plans.");
+        }
+
+        setCurrentUser(
+          profileData.user
+            ? {
+                ...profileData.user,
+                auth0Sub: profileData.user.auth0Sub || profileData.auth?.sub || null,
+                email: profileData.user.email || profileData.auth?.email || null,
+                displayName: profileData.user.displayName || profileData.auth?.name || null,
+              }
+            : {
+                auth0Sub: profileData.auth?.sub || null,
+                email: profileData.auth?.email || null,
+                displayName: profileData.auth?.name || null,
+                role: null,
+              },
+        );
+        setRecentPlans(recentPlansData.plans || []);
+      } catch (loadError) {
+        setError(loadError.message);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    }
+
+    loadProtectedData();
+  }, [authMode, getAccessToken, isAuthenticated]);
+
   const summaryCards = useMemo(() => {
     if (!planResponse?.plan) {
       return [];
@@ -56,15 +173,30 @@ export default function App() {
     ];
   }, [planResponse]);
 
+  const isAuthReady = authMode === "configured";
+  const canGeneratePlan = isAuthReady && isAuthenticated && !isLoading;
+
   async function handleSubmit(event) {
     event.preventDefault();
-    setIsLoading(true);
+
+    if (!canGeneratePlan || !getAccessToken) {
+      setError(
+        isAuthReady
+          ? "Sign in before generating an architecture plan."
+          : "Auth0 is not configured yet. Add the frontend and backend Auth0 environment variables first.",
+      );
+      return;
+    }
+
+    setIsLoadingPlan(true);
     setError("");
 
     try {
+      const token = await getAccessToken();
       const response = await fetch(`${API_BASE_URL}/plans/generate`, {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${token}`,
           "Content-Type": "application/json",
         },
         body: JSON.stringify(formValues),
@@ -79,10 +211,21 @@ export default function App() {
       startTransition(() => {
         setPlanResponse(data);
       });
+
+      const recentPlansResponse = await fetch(`${API_BASE_URL}/plans/recent`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      const recentPlansData = await recentPlansResponse.json();
+
+      if (recentPlansResponse.ok) {
+        setRecentPlans(recentPlansData.plans || []);
+      }
     } catch (submitError) {
       setError(submitError.message);
     } finally {
-      setIsLoading(false);
+      setIsLoadingPlan(false);
     }
   }
 
@@ -144,12 +287,61 @@ export default function App() {
   return (
     <main className="page-shell">
       <section className="hero">
-        <p className="eyebrow">Course Project MVP</p>
-        <h1>ArchitecturePlanner</h1>
+        <div className="hero-topbar">
+          <div>
+            <p className="eyebrow">Course Project MVP</p>
+            <h1>ArchitecturePlanner</h1>
+          </div>
+
+          <div className="auth-actions">
+            {authMode === "configured" ? (
+              isAuthenticated ? (
+                <>
+                  <div className="user-pill">
+                    <strong>{currentUser?.displayName || user?.name || user?.email || "Signed in"}</strong>
+                    <span>{currentUser?.role ? `Role: ${currentUser.role}` : user?.email || "Authenticated session"}</span>
+                  </div>
+                  <button type="button" className="secondary-button" onClick={onLogout}>
+                    Log out
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button type="button" className="secondary-button" onClick={onSignup} disabled={isLoading}>
+                    Sign up
+                  </button>
+                  <button type="button" className="primary-button" onClick={onLogin} disabled={isLoading}>
+                    {isLoading ? "Checking session..." : "Log in"}
+                  </button>
+                </>
+              )
+            ) : (
+              <div className="setup-pill">Auth0 setup required</div>
+            )}
+          </div>
+        </div>
+
         <p className="hero-copy">
-          Deterministic architecture generation for startups and small companies. Answer the questionnaire, get a stack
-          recommendation, a development roadmap, and downloadable diagram artifacts.
+          Deterministic architecture generation for startups and small companies. Answer the questionnaire, sign in with
+          Auth0, and get a stack recommendation, a development roadmap, and downloadable diagram artifacts.
         </p>
+
+        {authMode === "not-configured" ? (
+          <div className="info-box">
+            <strong>Authentication is not configured yet.</strong>
+            <span>
+              Add the Auth0 environment variables from <code>frontend/.env.example</code> and <code>backend/.env.example</code>
+              to enable registration, login, and protected API calls.
+            </span>
+          </div>
+        ) : null}
+
+        {authMode === "configured" && !isAuthenticated && !isLoading ? (
+          <div className="info-box">
+            <strong>Sign in is required to generate and save plans.</strong>
+            <span>The questionnaire stays visible, but protected API calls are unlocked only after Auth0 login.</span>
+          </div>
+        ) : null}
       </section>
 
       <div className="layout">
@@ -170,8 +362,8 @@ export default function App() {
               />
             ))}
 
-            <button type="submit" className="primary-button" disabled={isLoading}>
-              {isLoading ? "Generating architecture..." : "Generate architecture plan"}
+            <button type="submit" className="primary-button" disabled={!canGeneratePlan || isLoadingPlan}>
+              {isLoadingPlan ? "Generating architecture..." : "Generate architecture plan"}
             </button>
           </form>
         </section>
@@ -183,6 +375,33 @@ export default function App() {
           </div>
 
           {error ? <div className="error-box">{error}</div> : null}
+
+          {isAuthenticated ? (
+            <article className="narrative-card account-card">
+              <h3>Authenticated session</h3>
+              {isLoadingProfile ? (
+                <p>Syncing your Auth0 session with the backend...</p>
+              ) : (
+                <div className="account-meta">
+                  <span>{currentUser?.email || user?.email || "No email returned by Auth0"}</span>
+                  <span>{currentUser?.auth0Sub || "No Auth0 subject available"}</span>
+                </div>
+              )}
+            </article>
+          ) : null}
+
+          {recentPlans.length > 0 ? (
+            <article className="narrative-card">
+              <h3>Recent saved plans</h3>
+              <ul className="text-list">
+                {recentPlans.map((plan) => (
+                  <li key={plan.id}>
+                    <strong>{plan.projectName}</strong> created on {new Date(plan.createdAt).toLocaleString()}
+                  </li>
+                ))}
+              </ul>
+            </article>
+          ) : null}
 
           {!planResponse?.plan ? (
             <div className="empty-state">
@@ -338,11 +557,7 @@ function FieldRenderer({ field, value, onChange, onToggleFeature }) {
         <div className="checkbox-grid">
           {field.options.map((option) => (
             <label key={option} className="checkbox-card">
-              <input
-                type="checkbox"
-                checked={value.includes(option)}
-                onChange={() => onToggleFeature(option)}
-              />
+              <input type="checkbox" checked={value.includes(option)} onChange={() => onToggleFeature(option)} />
               <span>{readable(option)}</span>
             </label>
           ))}

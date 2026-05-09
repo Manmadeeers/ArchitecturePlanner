@@ -34,7 +34,17 @@ const regionDataCache = pgTable(
   }),
 );
 
+const users = pgTable("users", {
+  id: bigserial("id", { mode: "number" }).primaryKey(),
+  auth0Sub: text("auth0_sub").notNull().unique(),
+  email: text("email"),
+  displayName: text("display_name"),
+  role: text("role").notNull().default("user"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 module.exports = {
   generatedPlans,
   regionDataCache,
+  users,
 };

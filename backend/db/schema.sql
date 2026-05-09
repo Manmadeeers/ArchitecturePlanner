@@ -20,5 +20,14 @@ create table if not exists region_data_cache (
   refreshed_at timestamptz not null default now()
 );
 
+create table if not exists users (
+  id bigserial primary key,
+  auth0_sub text not null unique,
+  email text,
+  display_name text,
+  role text not null default 'user',
+  created_at timestamptz not null default now()
+);
+
 create index if not exists idx_generated_plans_created_at on generated_plans (created_at desc);
 create index if not exists idx_region_data_cache_region_code on region_data_cache (region_code);

@@ -2,9 +2,12 @@ const { Router } = require("express");
 
 const { generatePlan } = require("../../engine/planEngine");
 const { createPlanRepository } = require("../../db/planRepository");
+const { attachCurrentUser, requireAuth } = require("../auth");
 
 const router = Router();
 const repository = createPlanRepository();
+
+router.use(requireAuth, attachCurrentUser);
 
 router.post("/generate", async (req, res, next) => {
   try {
