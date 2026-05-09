@@ -49,8 +49,16 @@ const regionCatalog = {
   },
 };
 
-function getRegionProfile(regionCode) {
-  return regionCatalog[regionCode] || regionCatalog["north-america"];
+function getRegionProfile(regionCode, costMultiplierOverrides = {}) {
+  const baseProfile = regionCatalog[regionCode] || regionCatalog["north-america"];
+  const nextMultiplier = Number(costMultiplierOverrides[baseProfile.code]);
+
+  return {
+    ...baseProfile,
+    notes: [...baseProfile.notes],
+    costMultiplier:
+      Number.isFinite(nextMultiplier) && nextMultiplier > 0 ? nextMultiplier : baseProfile.costMultiplier,
+  };
 }
 
 module.exports = {

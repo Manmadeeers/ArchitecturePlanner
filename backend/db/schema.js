@@ -47,7 +47,32 @@ const regionDataCache = pgTable(
   }),
 );
 
+const engineSettings = pgTable("engine_settings", {
+  key: text("key").primaryKey(),
+  valueJson: jsonb("value_json").notNull(),
+  updatedBy: bigint("updated_by", { mode: "number" }).references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+const adminAuditLog = pgTable(
+  "admin_audit_log",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    actorUserId: bigint("actor_user_id", { mode: "number" }).references(() => users.id, { onDelete: "set null" }),
+    action: text("action").notNull(),
+    targetType: text("target_type").notNull(),
+    targetId: text("target_id"),
+    detailsJson: jsonb("details_json"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    createdAtIdx: index("idx_admin_audit_log_created_at").on(table.createdAt),
+  }),
+);
+
 module.exports = {
+  adminAuditLog,
+  engineSettings,
   generatedPlans,
   regionDataCache,
   users,

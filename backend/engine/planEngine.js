@@ -1,6 +1,7 @@
 const { questionnaire } = require("./questionnaire");
 const { rules } = require("./ruleSchema");
 const { evaluateRules } = require("./ruleEvaluator");
+const { DEFAULT_ENGINE_SETTINGS, normalizeEngineSettings } = require("./engineSettings");
 const { getRegionProfile } = require("./regionCatalog");
 const { buildDiagram, buildDrawioXml } = require("./diagramBuilder");
 
@@ -111,27 +112,23 @@ function buildDescription(input, recommendation, regionProfile) {
   ].join(" ");
 }
 
-function estimateCost(input, recommendation, regionProfile) {
-  const baseCost = {
-    monolith: 70,
-    "modular-monolith": 180,
-    "scalable-services": 420,
-  }[recommendation.architectureStyle];
-
-  const featureWeight = recommendation.components.length * 18;
-  const userWeight = Math.round(input.monthlyUsers / 700);
-  const urgencyWeight = input.needFastDelivery ? 25 : 0;
+function estimateCost(input, recommendation, regionProfile, engineSettings) {
+  const costModel = engineSettings.costModel;
+  const baseCost = costModel.baseMonthlyCost[recommendation.architectureStyle];
+  const featureWeight = recommendation.components.length * costModel.featureComponentWeight;
+  const userWeight = Math.round(input.monthlyUsers / costModel.monthlyUsersDivider);
+  const urgencyWeight = input.needFastDelivery ? costModel.fastDeliverySurcharge : 0;
   const regionalCost = Math.round((baseCost + featureWeight + userWeight + urgencyWeight) * regionProfile.costMultiplier);
 
   return {
     currency: "USD",
     monthlyEstimate: regionalCost,
     breakdown: {
-      compute: Math.round(regionalCost * 0.42),
-      database: Math.round(regionalCost * 0.26),
-      storage: Math.round(regionalCost * 0.14),
-      monitoring: Math.round(regionalCost * 0.08),
-      networking: Math.round(regionalCost * 0.1),
+      compute: Math.round(regionalCost * costModel.costBreakdown.compute),
+      database: Math.round(regionalCost * costModel.costBreakdown.database),
+      storage: Math.round(regionalCost * costModel.costBreakdown.storage),
+      monitoring: Math.round(regionalCost * costModel.costBreakdown.monitoring),
+      networking: Math.round(regionalCost * costModel.costBreakdown.networking),
     },
     assumptions: [
       "Estimate is deterministic and based on local MVP cost profiles.",
@@ -140,30 +137,35 @@ function estimateCost(input, recommendation, regionProfile) {
   };
 }
 
-function buildRoadmap(input, recommendation) {
+function buildRoadmap(input, recommendation, engineSettings) {
   const roadmap = [...recommendation.roadmap];
+  const roadmapRules = engineSettings.roadmapRules;
 
-  if (input.projectStage === "idea" || input.projectStage === "prototype") {
+  if (
+    roadmapRules.includeIdeaStageValidationStep &&
+    (input.projectStage === "idea" || input.projectStage === "prototype")
+  ) {
     roadmap.unshift("Validate the MVP with one deployment environment before investing in advanced infrastructure.");
   }
 
-  if (input.coreFeatures.includes("file-upload")) {
+  if (roadmapRules.includeFileUploadLifecycleStep && input.coreFeatures.includes("file-upload")) {
     roadmap.push("Add storage lifecycle policies when user-generated content volume starts growing.");
   }
 
-  if (input.realtimeFeatures) {
+  if (roadmapRules.includeRealtimeStressStep && input.realtimeFeatures) {
     roadmap.push("Stress-test realtime traffic and move stateful communication behind dedicated gateways as usage increases.");
   }
 
   return Array.from(new Set(roadmap));
 }
 
-function generatePlan(rawInput) {
+function generatePlan(rawInput, engineSettings = DEFAULT_ENGINE_SETTINGS) {
+  const resolvedEngineSettings = normalizeEngineSettings(engineSettings);
   const input = normalizeInput(rawInput);
   validateInput(input);
 
   const recommendation = evaluateRules(input, rules);
-  const regionProfile = getRegionProfile(input.targetRegion);
+  const regionProfile = getRegionProfile(input.targetRegion, resolvedEngineSettings.regionMultipliers);
   recommendation.regionAdjustments.costMultiplier = Math.max(
     recommendation.regionAdjustments.costMultiplier,
     regionProfile.costMultiplier
@@ -171,8 +173,8 @@ function generatePlan(rawInput) {
 
   recommendation.components = buildBaseComponents(input, recommendation);
 
-  const cost = estimateCost(input, recommendation, regionProfile);
-  const roadmap = buildRoadmap(input, recommendation);
+  const cost = estimateCost(input, recommendation, regionProfile, resolvedEngineSettings);
+  const roadmap = buildRoadmap(input, recommendation, resolvedEngineSettings);
   const summary = buildDescription(input, recommendation, regionProfile);
 
   const plan = {

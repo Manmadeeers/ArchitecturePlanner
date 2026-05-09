@@ -9,6 +9,7 @@ RUN npm ci --omit=dev
 
 COPY db ./db
 COPY engine ./engine
+COPY scripts ./scripts
 COPY src ./src
 
 EXPOSE 4000

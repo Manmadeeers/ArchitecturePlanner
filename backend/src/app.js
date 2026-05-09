@@ -1,5 +1,6 @@
 const express = require("express");
 
+const adminRouter = require("./routes/admin");
 const authRouter = require("./routes/auth");
 const healthRouter = require("./routes/health");
 const questionnaireRouter = require("./routes/questionnaire");
@@ -12,7 +13,7 @@ function createApp() {
 
   app.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
 
     if (req.method === "OPTIONS") {
@@ -24,6 +25,7 @@ function createApp() {
 
   app.use("/api/health", healthRouter);
   app.use("/api/auth", authRouter);
+  app.use("/api/admin", adminRouter);
   app.use("/api/questionnaire", questionnaireRouter);
   app.use("/api/plans", plansRouter);
 

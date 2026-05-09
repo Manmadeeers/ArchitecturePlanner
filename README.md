@@ -19,6 +19,11 @@ ArchitecturePlanner is a course-project MVP for startups and small companies tha
 - `GET /api/plans/recent`
 - `GET /api/plans`
 - `GET /api/plans/:planId`
+- `GET /api/admin/users`
+- `PATCH /api/admin/users/:userId/role`
+- `GET /api/admin/analytics/overview`
+- `GET /api/admin/settings/engine`
+- `PATCH /api/admin/settings/engine`
 
 ## Backend run
 
@@ -75,6 +80,39 @@ When you run the SPA through Docker + Nginx instead of the Vite dev server, add 
 
 Auth0 matches callback URLs exactly, including protocol and port, so `http://localhost:5173` and `https://localhost:20532` must both be listed if you use both environments.
 
+## Admin bootstrap
+
+Admin access is controlled by the local `users.role` column, while Auth0 remains the identity provider.
+
+Recommended first-admin flow:
+
+1. Sign in once through the app so the local `users` row is created.
+2. Promote that user from `backend/`:
+
+```powershell
+& 'C:\Program Files\nodejs\npm.cmd' run admin:promote -- user@example.com
+```
+
+If you are working from the Docker stack only, you can run the same promotion inside the backend container:
+
+```powershell
+docker exec architectureplanner-backend node scripts/promote-admin.js user@example.com
+```
+
+You can also promote a user manually in PostgreSQL:
+
+```sql
+update users
+set role = 'admin'
+where email = 'user@example.com';
+```
+
+After promotion, the authenticated header menu exposes the admin workspace, where admins can:
+
+- manage user roles
+- review system-wide analytics
+- update safe engine settings used by future plan generations
+
 ## Docker deployment
 
 The repository now includes:
@@ -121,6 +159,7 @@ If you already have an existing Postgres volume from an older version of the pro
 
 - `backend/db/migrations/001_link_generated_plans_to_users.sql`
 - `backend/db/migrations/002_store_full_plan_payloads.sql`
+- `backend/db/migrations/003_add_admin_tables.sql`
 
 ## Database setup
 

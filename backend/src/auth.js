@@ -66,8 +66,25 @@ async function attachCurrentUser(req, res, next) {
   }
 }
 
+function requireAdmin(req, res, next) {
+  if (!req.currentUser) {
+    return res.status(401).json({
+      error: "Current user context is required for admin access.",
+    });
+  }
+
+  if (req.currentUser.role !== "admin") {
+    return res.status(403).json({
+      error: "Admin access is required for this route.",
+    });
+  }
+
+  return next();
+}
+
 module.exports = {
   attachCurrentUser,
   isAuthConfigured,
+  requireAdmin,
   requireAuth,
 };

@@ -4,9 +4,11 @@ export function HeroSection({
   activeView,
   authMode,
   currentUser,
+  isAdmin,
   isAuthenticated,
   isLoading,
   onLogin,
+  onOpenAdmin,
   onNavigateHome,
   onLogout,
   onOpenProfile,
@@ -57,7 +59,15 @@ export function HeroSection({
           <p className="eyebrow">Professional architecture planning workspace</p>
           <div className="hero-brand-row">
             <h1>ArchitecturePlanner</h1>
-            <span className="header-badge">{activeView === "projects" ? "Project Library" : activeView === "profile" ? "Profile" : "Planner"}</span>
+            <span className="header-badge">
+              {activeView === "projects"
+                ? "Project Library"
+                : activeView === "profile"
+                  ? "Profile"
+                  : activeView === "admin"
+                    ? "Admin"
+                    : "Planner"}
+            </span>
           </div>
           <p className="hero-copy">
             Deterministic architecture planning for startups and small companies. Capture project constraints, review
@@ -126,6 +136,17 @@ export function HeroSection({
 
                       <div className="menu-section">
                         <span className="menu-section-label">Workspace</span>
+                        {isAdmin ? (
+                          <button
+                            type="button"
+                            className="menu-action-button"
+                            role="menuitem"
+                            onClick={handleMenuAction(onOpenAdmin)}
+                            disabled={activeView === "admin"}
+                          >
+                            Open admin panel
+                          </button>
+                        ) : null}
                         <button
                           type="button"
                           className="menu-action-button"

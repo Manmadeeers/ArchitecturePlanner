@@ -7,6 +7,7 @@
   "type": "commonjs",
   "main": "src/server.js",
   "scripts": {
+    "admin:promote": "node scripts/promote-admin.js",
     "start": "node src/server.js",
     "dev": "node src/server.js",
     "test": "node --test"

@@ -18,10 +18,17 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
   const [recentPlans, setRecentPlans] = useState([]);
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(defaultSelectedProject);
+  const [adminAnalytics, setAdminAnalytics] = useState(null);
+  const [adminUsers, setAdminUsers] = useState([]);
+  const [engineSettingsDraft, setEngineSettingsDraft] = useState(null);
+  const [engineSettingsRecord, setEngineSettingsRecord] = useState(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [isLoadingSelectedProject, setIsLoadingSelectedProject] = useState(false);
+  const [isLoadingAdmin, setIsLoadingAdmin] = useState(false);
+  const [isSavingEngineSettings, setIsSavingEngineSettings] = useState(false);
+  const [roleUpdateInFlightId, setRoleUpdateInFlightId] = useState(null);
   const [error, setError] = useState("");
 
   async function fetchJson(path, options = {}) {
@@ -68,6 +75,10 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
       setRecentPlans([]);
       setProjects([]);
       setSelectedProject(defaultSelectedProject);
+      setAdminAnalytics(null);
+      setAdminUsers([]);
+      setEngineSettingsDraft(null);
+      setEngineSettingsRecord(null);
       return;
     }
 
@@ -93,8 +104,15 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
     loadProtectedData();
   }, [authMode, getAccessToken, isAuthenticated]);
 
+  useEffect(() => {
+    if (activeView === "admin" && currentUser && currentUser.role !== "admin") {
+      setActiveView("profile");
+    }
+  }, [activeView, currentUser]);
+
   const isAuthReady = authMode === "configured";
   const canGeneratePlan = isAuthReady && isAuthenticated && !isLoading;
+  const isAdmin = currentUser?.role === "admin";
 
   async function submitPlan() {
     const { data, token } = await fetchJson("/plans/generate", {
@@ -120,6 +138,21 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
   async function refreshProjects(token) {
     const { data } = await fetchJson("/plans", { token });
     setProjects(data.plans || []);
+  }
+
+  async function loadAdminUsers(token) {
+    const { data } = await fetchJson("/admin/users", { token });
+    return data.users || [];
+  }
+
+  async function loadAdminAnalytics(token) {
+    const { data } = await fetchJson("/admin/analytics/overview", { token });
+    return data;
+  }
+
+  async function loadEngineSettings(token) {
+    const { data } = await fetchJson("/admin/settings/engine", { token });
+    return data;
   }
 
   function showPlannerView() {
@@ -157,6 +190,35 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
     }
   }
 
+  async function showAdminView() {
+    if (!isAdmin) {
+      setError("Admin access is required before opening the admin dashboard.");
+      return;
+    }
+
+    setActiveView("admin");
+    setIsLoadingAdmin(true);
+    setError("");
+
+    try {
+      const token = await getAccessToken();
+      const [usersData, analyticsData, settingsData] = await Promise.all([
+        loadAdminUsers(token),
+        loadAdminAnalytics(token),
+        loadEngineSettings(token),
+      ]);
+
+      setAdminUsers(usersData);
+      setAdminAnalytics(analyticsData);
+      setEngineSettingsRecord(settingsData);
+      setEngineSettingsDraft(settingsData.settings || null);
+    } catch (loadError) {
+      setError(loadError.message);
+    } finally {
+      setIsLoadingAdmin(false);
+    }
+  }
+
   async function selectProject(planId) {
     if (!planId) {
       return;
@@ -183,6 +245,62 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
       setError(loadError.message);
     } finally {
       setIsLoadingSelectedProject(false);
+    }
+  }
+
+  async function changeAdminUserRole(userId, role) {
+    setRoleUpdateInFlightId(userId);
+    setError("");
+
+    try {
+      const { data, token } = await fetchJson(`/admin/users/${userId}/role`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ role }),
+      });
+
+      const nextUser = data.user;
+      setAdminUsers((currentUsers) => currentUsers.map((user) => (user.id === nextUser.id ? { ...user, ...nextUser } : user)));
+      setCurrentUser((current) => (current?.id === nextUser.id ? { ...current, ...nextUser } : current));
+      setAdminAnalytics(await loadAdminAnalytics(token));
+
+      if (currentUser?.id === nextUser.id && nextUser.role !== "admin") {
+        setActiveView("profile");
+      }
+    } catch (updateError) {
+      setError(updateError.message);
+    } finally {
+      setRoleUpdateInFlightId(null);
+    }
+  }
+
+  async function saveEngineSettings() {
+    if (!engineSettingsDraft) {
+      return;
+    }
+
+    setIsSavingEngineSettings(true);
+    setError("");
+
+    try {
+      const { data } = await fetchJson("/admin/settings/engine", {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          settings: engineSettingsDraft,
+        }),
+      });
+
+      setEngineSettingsRecord(data);
+      setEngineSettingsDraft(data.settings || null);
+    } catch (saveError) {
+      setError(saveError.message);
+    } finally {
+      setIsSavingEngineSettings(false);
     }
   }
 
@@ -234,28 +352,102 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
     });
   }
 
+  function updateEngineRegionMultiplier(regionCode, value) {
+    setEngineSettingsDraft((current) =>
+      current
+        ? {
+            ...current,
+            regionMultipliers: {
+              ...current.regionMultipliers,
+              [regionCode]: value,
+            },
+          }
+        : current
+    );
+  }
+
+  function updateEngineBaseCost(architectureKey, value) {
+    setEngineSettingsDraft((current) =>
+      current
+        ? {
+            ...current,
+            costModel: {
+              ...current.costModel,
+              baseMonthlyCost: {
+                ...current.costModel.baseMonthlyCost,
+                [architectureKey]: value,
+              },
+            },
+          }
+        : current
+    );
+  }
+
+  function updateEngineCostValue(key, value) {
+    setEngineSettingsDraft((current) =>
+      current
+        ? {
+            ...current,
+            costModel: {
+              ...current.costModel,
+              [key]: value,
+            },
+          }
+        : current
+    );
+  }
+
+  function updateRoadmapRule(ruleKey, enabled) {
+    setEngineSettingsDraft((current) =>
+      current
+        ? {
+            ...current,
+            roadmapRules: {
+              ...current.roadmapRules,
+              [ruleKey]: enabled,
+            },
+          }
+        : current
+    );
+  }
+
   return {
     activeView,
+    adminAnalytics,
+    adminUsers,
     canGeneratePlan,
+    changeAdminUserRole,
     currentUser,
+    engineSettingsDraft,
+    engineSettingsRecord,
     error,
     formValues,
     handleSubmit,
+    isAdmin,
     isAuthReady,
+    isLoadingAdmin,
     isLoadingPlan,
     isLoadingProfile,
     isLoadingProjects,
     isLoadingSelectedProject,
+    isSavingEngineSettings,
     planResponse,
     projects,
     questionnaire,
     recentPlans,
+    roleUpdateInFlightId,
+    saveEngineSettings,
     selectedProject,
     selectProject,
+    showAdminView,
     showPlannerView,
     showProfileView,
     showProjectsView,
     toggleFeature,
+    updateEngineBaseCost,
+    updateEngineCostValue,
+    updateEngineRegionMultiplier,
+    updateRoadmapRule,
     updateField,
   };
 }

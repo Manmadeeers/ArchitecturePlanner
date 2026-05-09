@@ -1,6 +1,7 @@
 import { useAuth0 } from "@auth0/auth0-react";
 
 import { auth0Config, isAuthConfigured } from "./auth-config";
+import { AdminPanel } from "./components/AdminPanel";
 import { HeroSection } from "./components/HeroSection";
 import { ProfilePage } from "./components/ProfilePage";
 import { ProjectsPage } from "./components/ProjectsPage";
@@ -72,9 +73,11 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
         activeView={planner.activeView}
         authMode={authMode}
         currentUser={planner.currentUser}
+        isAdmin={planner.isAdmin}
         isAuthenticated={isAuthenticated}
         isLoading={isLoading}
         onLogin={onLogin}
+        onOpenAdmin={planner.showAdminView}
         onNavigateHome={planner.showPlannerView}
         onLogout={onLogout}
         onOpenProfile={planner.showProfileView}
@@ -91,6 +94,24 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
           onViewProjects={planner.showProjectsView}
           projectsCount={planner.projects.length}
           user={user}
+        />
+      ) : planner.activeView === "admin" ? (
+        <AdminPanel
+          adminAnalytics={planner.adminAnalytics}
+          adminUsers={planner.adminUsers}
+          currentUser={planner.currentUser}
+          engineSettingsDraft={planner.engineSettingsDraft}
+          engineSettingsRecord={planner.engineSettingsRecord}
+          error={planner.error}
+          isLoadingAdmin={planner.isLoadingAdmin}
+          isSavingEngineSettings={planner.isSavingEngineSettings}
+          onChangeUserRole={planner.changeAdminUserRole}
+          onSaveEngineSettings={planner.saveEngineSettings}
+          onUpdateEngineBaseCost={planner.updateEngineBaseCost}
+          onUpdateEngineCostValue={planner.updateEngineCostValue}
+          onUpdateEngineRegionMultiplier={planner.updateEngineRegionMultiplier}
+          onUpdateRoadmapRule={planner.updateRoadmapRule}
+          roleUpdateInFlightId={planner.roleUpdateInFlightId}
         />
       ) : planner.activeView === "projects" ? (
         <ProjectsPage

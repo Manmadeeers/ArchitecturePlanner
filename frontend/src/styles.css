@@ -408,7 +408,8 @@ code {
 }
 
 .layout,
-.projects-layout {
+.projects-layout,
+.admin-grid {
   position: relative;
   z-index: 1;
   display: grid;
@@ -423,6 +424,10 @@ code {
   grid-template-columns: minmax(320px, 0.84fr) minmax(0, 1.16fr);
 }
 
+.admin-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .panel {
   border: 1px solid var(--border-soft);
   border-radius: 28px;
@@ -435,7 +440,10 @@ code {
 .questionnaire-panel,
 .result-panel,
 .projects-sidebar,
-.project-detail-panel {
+.project-detail-panel,
+.admin-overview-panel,
+.admin-users-panel,
+.admin-settings-panel {
   min-height: 720px;
 }
 
@@ -479,6 +487,94 @@ code {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 18px;
+}
+
+.admin-summary-grid {
+  margin-top: 22px;
+}
+
+.admin-analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 18px;
+}
+
+.admin-list-card {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.admin-list-row,
+.admin-audit-item,
+.admin-user-meta {
+  display: grid;
+  gap: 4px;
+}
+
+.admin-list-row {
+  grid-template-columns: 1fr auto;
+  align-items: center;
+}
+
+.admin-audit-item span,
+.admin-user-meta span,
+.muted-text {
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.admin-search-field {
+  margin-top: 22px;
+}
+
+.admin-user-grid {
+  display: grid;
+  gap: 16px;
+  margin-top: 18px;
+}
+
+.admin-user-card {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-role-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.4rem 0.74rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.admin-role-badge-admin {
+  background: var(--bg-accent-soft);
+  color: var(--accent);
+}
+
+.admin-role-badge-user {
+  background: var(--bg-muted);
+  color: var(--text-secondary);
+}
+
+.admin-settings-section {
+  display: grid;
+  gap: 16px;
+}
+
+.admin-toggle-list {
+  display: grid;
+  gap: 12px;
 }
 
 .detail-list {
@@ -813,7 +909,9 @@ code {
 
   .layout,
   .projects-layout,
+  .admin-grid,
   .profile-grid,
+  .admin-analytics-grid,
   .summary-grid,
   .checkbox-grid {
     grid-template-columns: 1fr;
@@ -850,7 +948,10 @@ code {
   .questionnaire-panel,
   .result-panel,
   .projects-sidebar,
-  .project-detail-panel {
+  .project-detail-panel,
+  .admin-overview-panel,
+  .admin-users-panel,
+  .admin-settings-panel {
     min-height: auto;
   }
 }

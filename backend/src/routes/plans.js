@@ -1,17 +1,20 @@
 const { Router } = require("express");
 
+const { createEngineSettingsRepository } = require("../../db/repositories/engineSettingsRepository");
 const { generatePlan } = require("../../engine/planEngine");
 const { createPlanRepository } = require("../../db/planRepository");
 const { attachCurrentUser, requireAuth } = require("../auth");
 
 const router = Router();
+const engineSettingsRepository = createEngineSettingsRepository();
 const repository = createPlanRepository();
 
 router.use(requireAuth, attachCurrentUser);
 
 router.post("/generate", async (req, res, next) => {
   try {
-    const plan = generatePlan(req.body);
+    const engineSettings = await engineSettingsRepository.getEngineSettings();
+    const plan = generatePlan(req.body, engineSettings);
     const savedPlan = await repository.saveGeneratedPlan(req.currentUser?.id, plan);
 
     res.status(200).json({
