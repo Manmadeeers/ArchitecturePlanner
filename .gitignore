@@ -1,0 +1,46 @@
+# Dependencies
+node_modules/
+
+# Package manager caches
+.npm-cache/
+.pnpm-store/
+.yarn/
+
+# Build outputs
+dist/
+build/
+coverage/
+.vite/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime files
+*.pid
+*.seed
+*.pid.lock
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Test and tool caches
+.cache/
+.eslintcache
+*.tsbuildinfo
+
+# Local database files
+*.sqlite
+*.sqlite3
+*.db
