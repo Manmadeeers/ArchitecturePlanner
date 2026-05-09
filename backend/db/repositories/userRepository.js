@@ -36,6 +36,15 @@ function userSelection() {
   };
 }
 
+function normalizeOptionalText(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalizedValue = value.trim();
+  return normalizedValue ? normalizedValue : null;
+}
+
 function createUserRepository() {
   return {
     async upsertFromClaims(claims) {
@@ -45,28 +54,43 @@ function createUserRepository() {
         return null;
       }
 
-      const email = typeof claims.email === "string" ? claims.email : null;
+      const email = normalizeOptionalText(claims.email);
       const displayName =
-        typeof claims.name === "string"
-          ? claims.name
-          : typeof claims.nickname === "string"
-            ? claims.nickname
-            : email;
+        normalizeOptionalText(claims.name) ||
+        normalizeOptionalText(claims.nickname) ||
+        email;
 
-      const [row] = await db
-        .insert(users)
-        .values({
-          auth0Sub: claims.sub,
-          email,
-          displayName,
-        })
-        .onConflictDoUpdate({
-          target: users.auth0Sub,
-          set: {
+      const existingUser = await this.getUserByAuth0Sub(claims.sub);
+
+      if (!existingUser) {
+        const [row] = await db
+          .insert(users)
+          .values({
+            auth0Sub: claims.sub,
             email,
             displayName,
-          },
+          })
+          .returning({
+            ...userSelection(),
+          });
+
+        return row;
+      }
+
+      const nextEmail = email || existingUser.email || null;
+      const nextDisplayName = displayName || existingUser.displayName || nextEmail;
+
+      if (nextEmail === existingUser.email && nextDisplayName === existingUser.displayName) {
+        return existingUser;
+      }
+
+      const [row] = await db
+        .update(users)
+        .set({
+          email: nextEmail,
+          displayName: nextDisplayName,
         })
+        .where(eq(users.auth0Sub, claims.sub))
         .returning({
           ...userSelection(),
         });
@@ -126,6 +150,73 @@ function createUserRepository() {
         .limit(1);
 
       return row || null;
+    },
+
+    async getUserByAuth0Sub(auth0Sub) {
+      const db = getDb();
+
+      if (!db || !auth0Sub) {
+        return null;
+      }
+
+      const [row] = await db
+        .select({
+          ...userSelection(),
+        })
+        .from(users)
+        .where(eq(users.auth0Sub, auth0Sub))
+        .limit(1);
+
+      return row || null;
+    },
+
+    async syncProfile(auth0Sub, profile = {}) {
+      const db = getDb();
+
+      if (!db || !auth0Sub) {
+        return null;
+      }
+
+      const existingUser = await this.getUserByAuth0Sub(auth0Sub);
+      const email = normalizeOptionalText(profile.email) || existingUser?.email || null;
+      const displayName =
+        normalizeOptionalText(profile.displayName) ||
+        normalizeOptionalText(profile.nickname) ||
+        normalizeOptionalText(profile.name) ||
+        existingUser?.displayName ||
+        email;
+
+      if (!existingUser) {
+        const [row] = await db
+          .insert(users)
+          .values({
+            auth0Sub,
+            email,
+            displayName,
+          })
+          .returning({
+            ...userSelection(),
+          });
+
+        return row;
+      }
+
+      if (email === existingUser.email && displayName === existingUser.displayName) {
+        return existingUser;
+      }
+
+      const [row] = await db
+        .update(users)
+        .set({
+          email,
+          displayName,
+        })
+        .where(eq(users.auth0Sub, auth0Sub))
+        .returning({
+          ...userSelection(),
+        });
+
+      return row;
     },
 
     async countAdmins() {
