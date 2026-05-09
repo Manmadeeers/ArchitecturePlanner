@@ -9,7 +9,16 @@ const defaultSelectedProject = {
   savedPlan: null,
 };
 
-export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoading }) {
+function normalizeProfileField(value) {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const normalizedValue = value.trim();
+  return normalizedValue ? normalizedValue : null;
+}
+
+export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthenticated, isLoading }) {
   const [activeView, setActiveView] = useState("planner");
   const [questionnaire, setQuestionnaire] = useState([]);
   const [formValues, setFormValues] = useState(defaultValues);
@@ -29,6 +38,8 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(false);
   const [isSavingEngineSettings, setIsSavingEngineSettings] = useState(false);
   const [roleUpdateInFlightId, setRoleUpdateInFlightId] = useState(null);
+  const [userSaveInFlightId, setUserSaveInFlightId] = useState(null);
+  const [userDeleteInFlightId, setUserDeleteInFlightId] = useState(null);
   const [error, setError] = useState("");
 
   async function fetchJson(path, options = {}) {
@@ -69,7 +80,24 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
   }, []);
 
   useEffect(() => {
-    if (authMode !== "configured" || !isAuthenticated || !getAccessToken) {
+    if (authMode !== "configured" || !getAccessToken) {
+      setActiveView("planner");
+      setCurrentUser(null);
+      setRecentPlans([]);
+      setProjects([]);
+      setSelectedProject(defaultSelectedProject);
+      setAdminAnalytics(null);
+      setAdminUsers([]);
+      setEngineSettingsDraft(null);
+      setEngineSettingsRecord(null);
+      return;
+    }
+
+    if (isLoading) {
+      return;
+    }
+
+    if (!isAuthenticated) {
       setActiveView("planner");
       setCurrentUser(null);
       setRecentPlans([]);
@@ -87,6 +115,28 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
 
       try {
         const token = await getAccessToken();
+        const email = normalizeProfileField(authUser?.email);
+        const displayName =
+          normalizeProfileField(authUser?.name) ||
+          normalizeProfileField(authUser?.nickname) ||
+          email;
+
+        if (email || displayName) {
+          await fetchJson("/auth/profile", {
+            token,
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email,
+              displayName,
+              name: normalizeProfileField(authUser?.name),
+              nickname: normalizeProfileField(authUser?.nickname),
+            }),
+          });
+        }
+
         const [profileResult, recentPlansResult] = await Promise.all([
           fetchJson("/auth/me", { token }),
           fetchJson("/plans/recent", { token }),
@@ -102,7 +152,7 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
     }
 
     loadProtectedData();
-  }, [authMode, getAccessToken, isAuthenticated]);
+  }, [authMode, authUser, getAccessToken, isAuthenticated, isLoading]);
 
   useEffect(() => {
     if (activeView === "admin" && currentUser && currentUser.role !== "admin") {
@@ -276,6 +326,57 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
     }
   }
 
+  async function saveAdminUserProfile(userId, profile) {
+    setUserSaveInFlightId(userId);
+    setError("");
+
+    try {
+      const { data, token } = await fetchJson(`/admin/users/${userId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: profile.email,
+          displayName: profile.displayName,
+        }),
+      });
+
+      const nextUser = data.user;
+      const [usersData, analyticsData] = await Promise.all([loadAdminUsers(token), loadAdminAnalytics(token)]);
+      setAdminUsers(usersData);
+      setAdminAnalytics(analyticsData);
+      setCurrentUser((current) => (current?.id === nextUser.id ? { ...current, ...nextUser } : current));
+      return true;
+    } catch (saveError) {
+      setError(saveError.message);
+      return false;
+    } finally {
+      setUserSaveInFlightId(null);
+    }
+  }
+
+  async function deleteAdminUser(userId) {
+    setUserDeleteInFlightId(userId);
+    setError("");
+
+    try {
+      const { token } = await fetchJson(`/admin/users/${userId}`, {
+        method: "DELETE",
+      });
+
+      const [usersData, analyticsData] = await Promise.all([loadAdminUsers(token), loadAdminAnalytics(token)]);
+      setAdminUsers(usersData);
+      setAdminAnalytics(analyticsData);
+      return true;
+    } catch (deleteError) {
+      setError(deleteError.message);
+      return false;
+    } finally {
+      setUserDeleteInFlightId(null);
+    }
+  }
+
   async function saveEngineSettings() {
     if (!engineSettingsDraft) {
       return;
@@ -418,6 +519,7 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
     canGeneratePlan,
     changeAdminUserRole,
     currentUser,
+    deleteAdminUser,
     engineSettingsDraft,
     engineSettingsRecord,
     error,
@@ -436,6 +538,7 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
     questionnaire,
     recentPlans,
     roleUpdateInFlightId,
+    saveAdminUserProfile,
     saveEngineSettings,
     selectedProject,
     selectProject,
@@ -449,5 +552,7 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
     updateEngineRegionMultiplier,
     updateRoadmapRule,
     updateField,
+    userDeleteInFlightId,
+    userSaveInFlightId,
   };
 }

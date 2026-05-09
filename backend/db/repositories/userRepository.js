@@ -25,6 +25,12 @@ function createRoleValidationError(message) {
   return error;
 }
 
+function createUserValidationError(message) {
+  const error = new Error(message);
+  error.statusCode = 400;
+  return error;
+}
+
 function userSelection() {
   return {
     id: users.id,
@@ -178,21 +184,20 @@ function createUserRepository() {
       }
 
       const existingUser = await this.getUserByAuth0Sub(auth0Sub);
-      const email = normalizeOptionalText(profile.email) || existingUser?.email || null;
-      const displayName =
+      const incomingEmail = normalizeOptionalText(profile.email);
+      const incomingDisplayName =
         normalizeOptionalText(profile.displayName) ||
         normalizeOptionalText(profile.nickname) ||
         normalizeOptionalText(profile.name) ||
-        existingUser?.displayName ||
-        email;
+        incomingEmail;
 
       if (!existingUser) {
         const [row] = await db
           .insert(users)
           .values({
             auth0Sub,
-            email,
-            displayName,
+            email: incomingEmail,
+            displayName: incomingDisplayName,
           })
           .returning({
             ...userSelection(),
@@ -200,6 +205,9 @@ function createUserRepository() {
 
         return row;
       }
+
+      const email = existingUser.email || incomingEmail || null;
+      const displayName = existingUser.displayName || incomingDisplayName || email;
 
       if (email === existingUser.email && displayName === existingUser.displayName) {
         return existingUser;
@@ -215,6 +223,64 @@ function createUserRepository() {
         .returning({
           ...userSelection(),
         });
+
+      return row;
+    },
+
+    async updateUserDetails(targetUserId, nextProfile = {}, actorUserId = null) {
+      const db = getDb();
+
+      if (!db) {
+        throw createDatabaseRequiredError();
+      }
+
+      const currentUser = await this.getUserById(targetUserId);
+
+      if (!currentUser) {
+        throw createNotFoundError();
+      }
+
+      const nextEmail =
+        Object.prototype.hasOwnProperty.call(nextProfile, "email")
+          ? normalizeOptionalText(nextProfile.email)
+          : currentUser.email;
+      const rawDisplayName =
+        Object.prototype.hasOwnProperty.call(nextProfile, "displayName")
+          ? normalizeOptionalText(nextProfile.displayName)
+          : currentUser.displayName;
+      const nextDisplayName = rawDisplayName || nextEmail;
+
+      if (!nextEmail && !nextDisplayName) {
+        throw createUserValidationError("Provide at least an email or a display name for the user.");
+      }
+
+      if (nextEmail === currentUser.email && nextDisplayName === currentUser.displayName) {
+        return currentUser;
+      }
+
+      const [row] = await db
+        .update(users)
+        .set({
+          email: nextEmail,
+          displayName: nextDisplayName,
+        })
+        .where(eq(users.id, targetUserId))
+        .returning({
+          ...userSelection(),
+        });
+
+      await auditRepository.logAction({
+        actorUserId,
+        action: "user.profile.updated",
+        targetType: "user",
+        targetId: String(targetUserId),
+        details: {
+          previousEmail: currentUser.email,
+          nextEmail,
+          previousDisplayName: currentUser.displayName,
+          nextDisplayName,
+        },
+      });
 
       return row;
     },
@@ -287,6 +353,49 @@ function createUserRepository() {
       });
 
       return row;
+    },
+
+    async deleteUser(targetUserId, actorUserId = null) {
+      const db = getDb();
+
+      if (!db) {
+        throw createDatabaseRequiredError();
+      }
+
+      const currentUser = await this.getUserById(targetUserId);
+
+      if (!currentUser) {
+        throw createNotFoundError();
+      }
+
+      if (actorUserId && actorUserId === targetUserId) {
+        throw createUserValidationError("Admins cannot delete their own account from the admin panel.");
+      }
+
+      if (currentUser.role === "admin") {
+        const adminCount = await this.countAdmins();
+
+        if (adminCount <= 1) {
+          throw createUserValidationError("At least one admin user must remain in the system.");
+        }
+      }
+
+      await auditRepository.logAction({
+        actorUserId,
+        action: "user.deleted",
+        targetType: "user",
+        targetId: String(targetUserId),
+        details: {
+          auth0Sub: currentUser.auth0Sub,
+          email: currentUser.email,
+          displayName: currentUser.displayName,
+          role: currentUser.role,
+        },
+      });
+
+      await db.delete(users).where(eq(users.id, targetUserId));
+
+      return currentUser;
     },
   };
 }

@@ -14,11 +14,13 @@ const app = (
 ReactDOM.createRoot(document.getElementById("root")).render(
   isAuthConfigured ? (
     <Auth0Provider
+      cacheLocation="localstorage"
       domain={auth0Config.domain}
       clientId={auth0Config.clientId}
       authorizationParams={{
         audience: auth0Config.audience,
         redirect_uri: auth0Config.redirectUri,
+        scope: "openid profile email",
       }}
     >
       {app}

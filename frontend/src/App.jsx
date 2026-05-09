@@ -62,6 +62,7 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
   const { theme, toggleTheme } = useThemePreference();
   const planner = usePlannerApp({
     authMode,
+    authUser: user,
     getAccessToken,
     isAuthenticated,
     isLoading,
@@ -100,6 +101,8 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
           adminAnalytics={planner.adminAnalytics}
           adminUsers={planner.adminUsers}
           currentUser={planner.currentUser}
+          onDeleteUser={planner.deleteAdminUser}
+          onSaveUserProfile={planner.saveAdminUserProfile}
           engineSettingsDraft={planner.engineSettingsDraft}
           engineSettingsRecord={planner.engineSettingsRecord}
           error={planner.error}
@@ -111,6 +114,8 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
           onUpdateEngineCostValue={planner.updateEngineCostValue}
           onUpdateEngineRegionMultiplier={planner.updateEngineRegionMultiplier}
           onUpdateRoadmapRule={planner.updateRoadmapRule}
+          userDeleteInFlightId={planner.userDeleteInFlightId}
+          userSaveInFlightId={planner.userSaveInFlightId}
           roleUpdateInFlightId={planner.roleUpdateInFlightId}
         />
       ) : planner.activeView === "projects" ? (

@@ -545,6 +545,10 @@ code {
   gap: 14px;
 }
 
+.admin-user-edit-grid {
+  margin-top: 2px;
+}
+
 .admin-role-badge {
   display: inline-flex;
   align-items: center;
@@ -691,6 +695,7 @@ code {
 
 .primary-button,
 .secondary-button,
+.danger-button,
 .project-card,
 .theme-toggle,
 .profile-trigger,
@@ -705,7 +710,8 @@ code {
 }
 
 .primary-button,
-.secondary-button {
+.secondary-button,
+.danger-button {
   border: 1px solid transparent;
   cursor: pointer;
   border-radius: 999px;
@@ -725,12 +731,19 @@ code {
   border-color: var(--border-soft);
 }
 
+.danger-button {
+  background: var(--error-bg);
+  color: var(--error-text);
+  border-color: transparent;
+}
+
 .secondary-button-subtle {
   background: var(--bg-subtle);
 }
 
 .primary-button:hover,
 .secondary-button:hover,
+.danger-button:hover,
 .project-card:hover,
 .theme-toggle:hover,
 .profile-trigger:hover,
@@ -741,6 +754,7 @@ code {
 
 .primary-button:disabled,
 .secondary-button:disabled,
+.danger-button:disabled,
 .menu-action-button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
@@ -886,6 +900,7 @@ code {
 
 .primary-button:focus-visible,
 .secondary-button:focus-visible,
+.danger-button:focus-visible,
 .profile-trigger:focus-visible,
 .theme-toggle:focus-visible,
 .menu-trigger:focus-visible,

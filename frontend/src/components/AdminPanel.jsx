@@ -25,6 +25,8 @@ export function AdminPanel({
   adminAnalytics,
   adminUsers,
   currentUser,
+  onDeleteUser,
+  onSaveUserProfile,
   engineSettingsDraft,
   engineSettingsRecord,
   error,
@@ -37,8 +39,15 @@ export function AdminPanel({
   onUpdateEngineRegionMultiplier,
   onUpdateRoadmapRule,
   roleUpdateInFlightId,
+  userDeleteInFlightId,
+  userSaveInFlightId,
 }) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [editDraft, setEditDraft] = useState({
+    displayName: "",
+    email: "",
+  });
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredUsers = normalizedSearch
     ? adminUsers.filter((user) =>
@@ -47,6 +56,46 @@ export function AdminPanel({
           .some((value) => String(value).toLowerCase().includes(normalizedSearch))
       )
     : adminUsers;
+
+  function beginEditingUser(user) {
+    setEditingUserId(user.id);
+    setEditDraft({
+      displayName: user.displayName || "",
+      email: user.email || "",
+    });
+  }
+
+  function cancelEditingUser() {
+    setEditingUserId(null);
+    setEditDraft({
+      displayName: "",
+      email: "",
+    });
+  }
+
+  async function saveUserProfile(userId) {
+    const wasSaved = await onSaveUserProfile(userId, editDraft);
+
+    if (wasSaved) {
+      cancelEditingUser();
+    }
+  }
+
+  async function deleteUser(user) {
+    const shouldDelete = window.confirm(
+      `Delete ${user.displayName || user.email || user.auth0Sub}? Their saved projects will be removed as well.`
+    );
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    const wasDeleted = await onDeleteUser(user.id);
+
+    if (wasDeleted && editingUserId === user.id) {
+      cancelEditingUser();
+    }
+  }
 
   return (
     <section className="admin-grid">
@@ -176,6 +225,10 @@ export function AdminPanel({
             filteredUsers.map((user) => {
               const isCurrentUser = currentUser?.id === user.id;
               const isUpdatingRole = roleUpdateInFlightId === user.id;
+              const isSavingUser = userSaveInFlightId === user.id;
+              const isDeletingUser = userDeleteInFlightId === user.id;
+              const isEditingUser = editingUserId === user.id;
+              const isMutatingUser = isUpdatingRole || isSavingUser || isDeletingUser;
 
               return (
                 <article key={user.id} className="narrative-card admin-user-card">
@@ -196,11 +249,87 @@ export function AdminPanel({
                     {isCurrentUser ? <span>Current signed-in admin</span> : null}
                   </div>
 
+                  {isEditingUser ? (
+                    <div className="profile-grid admin-user-edit-grid">
+                      <label className="field">
+                        <span>Display name</span>
+                        <input
+                          type="text"
+                          value={editDraft.displayName}
+                          disabled={isMutatingUser}
+                          onChange={(event) =>
+                            setEditDraft((current) => ({
+                              ...current,
+                              displayName: event.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+
+                      <label className="field">
+                        <span>Email</span>
+                        <input
+                          type="email"
+                          value={editDraft.email}
+                          disabled={isMutatingUser}
+                          onChange={(event) =>
+                            setEditDraft((current) => ({
+                              ...current,
+                              email: event.target.value,
+                            }))
+                          }
+                        />
+                      </label>
+                    </div>
+                  ) : null}
+
+                  <div className="button-row">
+                    {isEditingUser ? (
+                      <>
+                        <button
+                          type="button"
+                          className="primary-button"
+                          disabled={isMutatingUser}
+                          onClick={() => saveUserProfile(user.id)}
+                        >
+                          {isSavingUser ? "Saving..." : "Save changes"}
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          disabled={isMutatingUser}
+                          onClick={cancelEditingUser}
+                        >
+                          Cancel
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          disabled={isMutatingUser}
+                          onClick={() => beginEditingUser(user)}
+                        >
+                          Edit details
+                        </button>
+                        <button
+                          type="button"
+                          className="danger-button"
+                          disabled={isMutatingUser || isCurrentUser}
+                          onClick={() => deleteUser(user)}
+                        >
+                          {isDeletingUser ? "Deleting..." : "Delete user"}
+                        </button>
+                      </>
+                    )}
+                  </div>
+
                   <div className="button-row">
                     <button
                       type="button"
                       className="secondary-button"
-                      disabled={user.role === "user" || isUpdatingRole}
+                      disabled={user.role === "user" || isMutatingUser}
                       onClick={() => onChangeUserRole(user.id, "user")}
                     >
                       {isUpdatingRole && user.role === "admin" ? "Updating..." : "Set as user"}
@@ -208,7 +337,7 @@ export function AdminPanel({
                     <button
                       type="button"
                       className="primary-button"
-                      disabled={user.role === "admin" || isUpdatingRole}
+                      disabled={user.role === "admin" || isMutatingUser}
                       onClick={() => onChangeUserRole(user.id, "admin")}
                     >
                       {isUpdatingRole && user.role !== "admin" ? "Updating..." : "Make admin"}
