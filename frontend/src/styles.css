@@ -80,10 +80,22 @@ select {
   min-width: 240px;
 }
 
+.user-pill-button {
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+
 .user-pill span,
 .setup-pill {
   color: #5d4f41;
   font-size: 0.92rem;
+}
+
+.user-pill em {
+  font-style: normal;
+  color: #8b6b52;
+  font-size: 0.84rem;
 }
 
 .info-box {
@@ -100,6 +112,12 @@ select {
 .layout {
   display: grid;
   grid-template-columns: 1.05fr 0.95fr;
+  gap: 22px;
+}
+
+.projects-layout {
+  display: grid;
+  grid-template-columns: 0.92fr 1.08fr;
   gap: 22px;
 }
 
@@ -128,6 +146,11 @@ select {
   margin-top: 22px;
 }
 
+.view-panel {
+  display: grid;
+  gap: 22px;
+}
+
 .account-meta {
   display: grid;
   gap: 6px;
@@ -140,6 +163,45 @@ select {
   display: grid;
   gap: 16px;
   margin-top: 22px;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.detail-list {
+  display: grid;
+  gap: 16px;
+  margin: 14px 0 0;
+}
+
+.detail-list dt {
+  font-weight: 700;
+  color: #6a594d;
+}
+
+.detail-list dd {
+  margin: 6px 0 0;
+  color: #433329;
+  word-break: break-word;
+}
+
+.action-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 20px 22px;
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(226, 214, 198, 0.65) 0%, rgba(242, 234, 222, 0.85) 100%);
+  border: 1px solid rgba(66, 53, 43, 0.12);
+}
+
+.action-banner p {
+  margin: 8px 0 0;
+  color: #5d4f41;
 }
 
 .field,
@@ -317,6 +379,49 @@ select {
   flex-wrap: wrap;
 }
 
+.project-card-grid {
+  display: grid;
+  gap: 14px;
+  margin-top: 22px;
+}
+
+.project-card {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 18px;
+  border-radius: 20px;
+  border: 1px solid rgba(66, 53, 43, 0.12);
+  background: linear-gradient(180deg, #fff8f1 0%, #f6efe4 100%);
+  cursor: pointer;
+}
+
+.project-card-active {
+  border-color: rgba(157, 98, 51, 0.45);
+  box-shadow: 0 12px 28px rgba(157, 98, 51, 0.15);
+}
+
+.project-card-topline,
+.project-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.project-card p {
+  margin: 0;
+  color: #4e3d31;
+  line-height: 1.5;
+}
+
+.project-card-topline span,
+.project-card-meta span {
+  color: #6a594d;
+  font-size: 0.9rem;
+}
+
 .error-box {
   background: #f2d7d7;
   color: #6c2626;
@@ -336,9 +441,21 @@ select {
     grid-template-columns: 1fr;
   }
 
+  .projects-layout,
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+
   .summary-grid,
   .checkbox-grid {
     grid-template-columns: 1fr;
+  }
+
+  .action-banner,
+  .project-card-topline,
+  .project-card-meta {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .page-shell {

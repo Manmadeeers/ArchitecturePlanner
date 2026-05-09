@@ -17,6 +17,8 @@ ArchitecturePlanner is a course-project MVP for startups and small companies tha
 - `GET /api/questionnaire`
 - `POST /api/plans/generate`
 - `GET /api/plans/recent`
+- `GET /api/plans`
+- `GET /api/plans/:planId`
 
 ## Backend run
 
@@ -65,6 +67,14 @@ Suggested local Auth0 dashboard URLs:
 - Allowed Logout URLs: `http://localhost:5173`
 - Allowed Web Origins: `http://localhost:5173`
 
+When you run the SPA through Docker + Nginx instead of the Vite dev server, add these too:
+
+- Allowed Callback URLs: `https://localhost:20532`
+- Allowed Logout URLs: `https://localhost:20532`
+- Allowed Web Origins: `https://localhost:20532`
+
+Auth0 matches callback URLs exactly, including protocol and port, so `http://localhost:5173` and `https://localhost:20532` must both be listed if you use both environments.
+
 ## Docker deployment
 
 The repository now includes:
@@ -93,6 +103,7 @@ VITE_API_BASE_URL=/api
 ```
 
 so Nginx can proxy API traffic to the backend container on the same origin.
+The Docker frontend build also reads `frontend/.env`, so your `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID`, and `VITE_AUTH0_AUDIENCE` values are baked into the SPA image together with the production redirect URL from `frontend/.env.production`.
 
 To start the stack:
 
@@ -105,6 +116,11 @@ The compose file:
 - builds PostgreSQL from `db/Dockerfile` and initializes schema from `backend/db/schema.sql`
 - runs the backend against the `db` service over the internal Docker network
 - exposes Nginx on ports `80` and `20532`
+
+If you already have an existing Postgres volume from an older version of the project, init scripts will not rerun automatically. Apply upgrade SQL manually from:
+
+- `backend/db/migrations/001_link_generated_plans_to_users.sql`
+- `backend/db/migrations/002_store_full_plan_payloads.sql`
 
 ## Database setup
 

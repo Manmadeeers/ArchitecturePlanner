@@ -1,10 +1,13 @@
 export function HeroSection({
+  activeView,
   authMode,
   currentUser,
   isAuthenticated,
   isLoading,
   onLogin,
+  onNavigateHome,
   onLogout,
+  onOpenProfile,
   onSignup,
   user,
 }) {
@@ -20,10 +23,16 @@ export function HeroSection({
           {authMode === "configured" ? (
             isAuthenticated ? (
               <>
-                <div className="user-pill">
+                <button type="button" className="user-pill user-pill-button" onClick={onOpenProfile}>
                   <strong>{currentUser?.displayName || user?.name || user?.email || "Signed in"}</strong>
                   <span>{currentUser?.role ? `Role: ${currentUser.role}` : user?.email || "Authenticated session"}</span>
-                </div>
+                  <em>{activeView === "profile" ? "Profile open" : "Open profile"}</em>
+                </button>
+                {activeView !== "planner" ? (
+                  <button type="button" className="secondary-button" onClick={onNavigateHome}>
+                    Back to planner
+                  </button>
+                ) : null}
                 <button type="button" className="secondary-button" onClick={onLogout}>
                   Log out
                 </button>

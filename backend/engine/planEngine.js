@@ -5,6 +5,23 @@ const { getRegionProfile } = require("./regionCatalog");
 const { buildDiagram, buildDrawioXml } = require("./diagramBuilder");
 
 const FIELD_MAP = new Map(questionnaire.map((field) => [field.id, field]));
+const DEFAULT_DEVELOPMENT_PLAN = [
+  {
+    phase: "Phase 1",
+    title: "Questionnaire and planning API",
+    outcome: "Collect requirements and generate deterministic architecture recommendations.",
+  },
+  {
+    phase: "Phase 2",
+    title: "Diagram export and saved plans",
+    outcome: "Allow users to download diagrams and compare previous results.",
+  },
+  {
+    phase: "Phase 3",
+    title: "External region data sync",
+    outcome: "Refresh cost and service availability data from open APIs.",
+  },
+];
 
 function normalizeInput(raw = {}) {
   return {
@@ -169,11 +186,7 @@ function generatePlan(rawInput) {
     regionProfile,
     cost,
     roadmap,
-    developmentPlan: [
-      { phase: "Phase 1", title: "Questionnaire and planning API", outcome: "Collect requirements and generate deterministic architecture recommendations." },
-      { phase: "Phase 2", title: "Diagram export and saved plans", outcome: "Allow users to download diagrams and compare previous results." },
-      { phase: "Phase 3", title: "External region data sync", outcome: "Refresh cost and service availability data from open APIs." },
-    ],
+    developmentPlan: DEFAULT_DEVELOPMENT_PLAN,
     generatedAt: new Date().toISOString(),
   };
 
@@ -195,6 +208,7 @@ function createPlanId(projectName) {
 
 module.exports = {
   FIELD_MAP,
+  DEFAULT_DEVELOPMENT_PLAN,
   generatePlan,
   normalizeInput,
   validateInput,

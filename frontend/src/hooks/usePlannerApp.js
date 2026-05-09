@@ -1,18 +1,51 @@
-import { startTransition, useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useState } from "react";
 
 import { API_BASE_URL } from "../config/api";
 import { defaultValues } from "../constants/planner";
-import { normalizeCurrentUser, readable } from "../utils/formatters";
+import { normalizeCurrentUser } from "../utils/formatters";
+
+const defaultSelectedProject = {
+  plan: null,
+  savedPlan: null,
+};
 
 export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoading }) {
+  const [activeView, setActiveView] = useState("planner");
   const [questionnaire, setQuestionnaire] = useState([]);
   const [formValues, setFormValues] = useState(defaultValues);
   const [planResponse, setPlanResponse] = useState(null);
   const [currentUser, setCurrentUser] = useState(null);
   const [recentPlans, setRecentPlans] = useState([]);
+  const [projects, setProjects] = useState([]);
+  const [selectedProject, setSelectedProject] = useState(defaultSelectedProject);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+  const [isLoadingProjects, setIsLoadingProjects] = useState(false);
+  const [isLoadingSelectedProject, setIsLoadingSelectedProject] = useState(false);
   const [error, setError] = useState("");
+
+  async function fetchJson(path, options = {}) {
+    const token = options.token || (await getAccessToken?.());
+
+    if (!token) {
+      throw new Error("Sign in before accessing protected project data.");
+    }
+
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw new Error(Array.isArray(data.details) ? data.details.join(", ") : data.error || "The request failed.");
+    }
+
+    return { data, token };
+  }
 
   useEffect(() => {
     async function loadQuestionnaire() {
@@ -30,8 +63,11 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
 
   useEffect(() => {
     if (authMode !== "configured" || !isAuthenticated || !getAccessToken) {
+      setActiveView("planner");
       setCurrentUser(null);
       setRecentPlans([]);
+      setProjects([]);
+      setSelectedProject(defaultSelectedProject);
       return;
     }
 
@@ -40,32 +76,13 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
 
       try {
         const token = await getAccessToken();
-        const [profileResponse, recentPlansResponse] = await Promise.all([
-          fetch(`${API_BASE_URL}/auth/me`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-          fetch(`${API_BASE_URL}/plans/recent`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
+        const [profileResult, recentPlansResult] = await Promise.all([
+          fetchJson("/auth/me", { token }),
+          fetchJson("/plans/recent", { token }),
         ]);
 
-        const profileData = await profileResponse.json();
-        const recentPlansData = await recentPlansResponse.json();
-
-        if (!profileResponse.ok) {
-          throw new Error(profileData.error || "Could not load the authenticated profile.");
-        }
-
-        if (!recentPlansResponse.ok) {
-          throw new Error(recentPlansData.error || "Could not load recent plans.");
-        }
-
-        setCurrentUser(normalizeCurrentUser(profileData));
-        setRecentPlans(recentPlansData.plans || []);
+        setCurrentUser(normalizeCurrentUser(profileResult.data));
+        setRecentPlans(recentPlansResult.data.plans || []);
       } catch (loadError) {
         setError(loadError.message);
       } finally {
@@ -76,40 +93,17 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
     loadProtectedData();
   }, [authMode, getAccessToken, isAuthenticated]);
 
-  const summaryCards = useMemo(() => {
-    if (!planResponse?.plan) {
-      return [];
-    }
-
-    const plan = planResponse.plan;
-
-    return [
-      { label: "Architecture", value: readable(plan.recommendation.architectureStyle) },
-      { label: "Deployment", value: readable(plan.recommendation.deploymentModel) },
-      { label: "Monthly Cost", value: `$${plan.cost.monthlyEstimate}` },
-      { label: "Region", value: plan.regionProfile.label },
-    ];
-  }, [planResponse]);
-
   const isAuthReady = authMode === "configured";
   const canGeneratePlan = isAuthReady && isAuthenticated && !isLoading;
 
   async function submitPlan() {
-    const token = await getAccessToken();
-    const response = await fetch(`${API_BASE_URL}/plans/generate`, {
+    const { data, token } = await fetchJson("/plans/generate", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify(formValues),
     });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(Array.isArray(data.details) ? data.details.join(", ") : data.error || "Failed to generate plan");
-    }
 
     startTransition(() => {
       setPlanResponse(data);
@@ -119,15 +113,76 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
   }
 
   async function refreshRecentPlans(token) {
-    const recentPlansResponse = await fetch(`${API_BASE_URL}/plans/recent`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    });
-    const recentPlansData = await recentPlansResponse.json();
+    const { data } = await fetchJson("/plans/recent", { token });
+    setRecentPlans(data.plans || []);
+  }
 
-    if (recentPlansResponse.ok) {
-      setRecentPlans(recentPlansData.plans || []);
+  async function refreshProjects(token) {
+    const { data } = await fetchJson("/plans", { token });
+    setProjects(data.plans || []);
+  }
+
+  function showPlannerView() {
+    setActiveView("planner");
+    setError("");
+  }
+
+  function showProfileView() {
+    setActiveView("profile");
+    setError("");
+  }
+
+  async function showProjectsView() {
+    if (!isAuthReady || !isAuthenticated) {
+      setError("Sign in before opening your saved projects.");
+      return;
+    }
+
+    setActiveView("projects");
+    setIsLoadingProjects(true);
+    setError("");
+
+    try {
+      const { data } = await fetchJson("/plans");
+      const nextProjects = data.plans || [];
+      setProjects(nextProjects);
+
+      if (nextProjects.length > 0 && !selectedProject?.plan?.planId) {
+        await selectProject(nextProjects[0].planId);
+      }
+    } catch (loadError) {
+      setError(loadError.message);
+    } finally {
+      setIsLoadingProjects(false);
+    }
+  }
+
+  async function selectProject(planId) {
+    if (!planId) {
+      return;
+    }
+
+    setIsLoadingSelectedProject(true);
+    setError("");
+
+    try {
+      if (planResponse?.plan?.planId === planId) {
+        const savedPlan =
+          projects.find((project) => project.planId === planId) || recentPlans.find((project) => project.planId === planId) || null;
+
+        setSelectedProject({
+          plan: planResponse.plan,
+          savedPlan,
+        });
+        return;
+      }
+
+      const { data } = await fetchJson(`/plans/${encodeURIComponent(planId)}`);
+      setSelectedProject(data);
+    } catch (loadError) {
+      setError(loadError.message);
+    } finally {
+      setIsLoadingSelectedProject(false);
     }
   }
 
@@ -149,6 +204,9 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
     try {
       const token = await submitPlan();
       await refreshRecentPlans(token);
+      if (projects.length > 0 || activeView === "projects") {
+        await refreshProjects(token);
+      }
     } catch (submitError) {
       setError(submitError.message);
     } finally {
@@ -177,6 +235,7 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
   }
 
   return {
+    activeView,
     canGeneratePlan,
     currentUser,
     error,
@@ -185,10 +244,17 @@ export function usePlannerApp({ authMode, getAccessToken, isAuthenticated, isLoa
     isAuthReady,
     isLoadingPlan,
     isLoadingProfile,
+    isLoadingProjects,
+    isLoadingSelectedProject,
     planResponse,
+    projects,
     questionnaire,
     recentPlans,
-    summaryCards,
+    selectedProject,
+    selectProject,
+    showPlannerView,
+    showProfileView,
+    showProjectsView,
     toggleFeature,
     updateField,
   };

@@ -5,6 +5,7 @@ WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 
+COPY frontend/.env ./.env
 COPY frontend/.env.production ./.env.production
 COPY frontend/index.html ./index.html
 COPY frontend/vite.config.js ./vite.config.js
