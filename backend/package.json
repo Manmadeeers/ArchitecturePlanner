@@ -1,0 +1,19 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "ArchitecturePlanner deterministic planning API",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.44.2",
+    "express": "^5.2.1",
+    "pg": "^8.13.1"
+  }
+}
