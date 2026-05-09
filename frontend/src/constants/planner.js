@@ -1,0 +1,17 @@
+export const defaultValues = {
+  projectName: "",
+  projectStage: "idea",
+  businessType: "saas",
+  targetRegion: "north-america",
+  deploymentPreference: "cloud",
+  monthlyUsers: 500,
+  monthlyBudget: 150,
+  applicationType: "web-app",
+  coreFeatures: ["authentication"],
+  realtimeFeatures: false,
+  dataSensitivity: "low",
+  availabilityRequirement: "basic",
+  expectedGrowth: "slow",
+  teamTechnicalLevel: "medium",
+  needFastDelivery: true,
+};

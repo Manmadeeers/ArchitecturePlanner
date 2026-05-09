@@ -1,37 +1,20 @@
-import { useEffect, useMemo, useState, startTransition } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 
 import { isAuthConfigured } from "./auth-config";
-
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:4000/api";
-
-const defaultValues = {
-  projectName: "",
-  projectStage: "idea",
-  businessType: "saas",
-  targetRegion: "north-america",
-  deploymentPreference: "cloud",
-  monthlyUsers: 500,
-  monthlyBudget: 150,
-  applicationType: "web-app",
-  coreFeatures: ["authentication"],
-  realtimeFeatures: false,
-  dataSensitivity: "low",
-  availabilityRequirement: "basic",
-  expectedGrowth: "slow",
-  teamTechnicalLevel: "medium",
-  needFastDelivery: true,
-};
+import { HeroSection } from "./components/HeroSection";
+import { QuestionnairePanel } from "./components/QuestionnairePanel";
+import { ResultPanel } from "./components/ResultPanel";
+import { usePlannerApp } from "./hooks/usePlannerApp";
 
 export default function App() {
-  return isAuthConfigured ? <AuthenticatedApp /> : <AuthSetupApp />;
+  return isAuthConfigured ? <AuthenticatedApp /> : <UnauthenticatedApp />;
 }
 
 function AuthenticatedApp() {
   const { getAccessTokenSilently, isAuthenticated, isLoading, loginWithRedirect, logout, user } = useAuth0();
 
   return (
-    <AppShell
+    <PlannerPage
       authMode="configured"
       getAccessToken={getAccessTokenSilently}
       isAuthenticated={isAuthenticated}
@@ -56,9 +39,9 @@ function AuthenticatedApp() {
   );
 }
 
-function AuthSetupApp() {
+function UnauthenticatedApp() {
   return (
-    <AppShell
+    <PlannerPage
       authMode="not-configured"
       getAccessToken={null}
       isAuthenticated={false}
@@ -71,582 +54,49 @@ function AuthSetupApp() {
   );
 }
 
-function AppShell({ authMode, getAccessToken, isAuthenticated, isLoading, onLogin, onLogout, onSignup, user }) {
-  const [questionnaire, setQuestionnaire] = useState([]);
-  const [formValues, setFormValues] = useState(defaultValues);
-  const [planResponse, setPlanResponse] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [recentPlans, setRecentPlans] = useState([]);
-  const [isLoadingPlan, setIsLoadingPlan] = useState(false);
-  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    async function loadQuestionnaire() {
-      try {
-        const response = await fetch(`${API_BASE_URL}/questionnaire`);
-        const data = await response.json();
-        setQuestionnaire(data.questionnaire || []);
-      } catch (loadError) {
-        setError("Could not load questionnaire definition from the API.");
-      }
-    }
-
-    loadQuestionnaire();
-  }, []);
-
-  useEffect(() => {
-    if (authMode !== "configured" || !isAuthenticated || !getAccessToken) {
-      setCurrentUser(null);
-      setRecentPlans([]);
-      return;
-    }
-
-    async function loadProtectedData() {
-      setIsLoadingProfile(true);
-
-      try {
-        const token = await getAccessToken();
-
-        const [profileResponse, recentPlansResponse] = await Promise.all([
-          fetch(`${API_BASE_URL}/auth/me`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-          fetch(`${API_BASE_URL}/plans/recent`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          }),
-        ]);
-
-        const profileData = await profileResponse.json();
-        const recentPlansData = await recentPlansResponse.json();
-
-        if (!profileResponse.ok) {
-          throw new Error(profileData.error || "Could not load the authenticated profile.");
-        }
-
-        if (!recentPlansResponse.ok) {
-          throw new Error(recentPlansData.error || "Could not load recent plans.");
-        }
-
-        setCurrentUser(
-          profileData.user
-            ? {
-                ...profileData.user,
-                auth0Sub: profileData.user.auth0Sub || profileData.auth?.sub || null,
-                email: profileData.user.email || profileData.auth?.email || null,
-                displayName: profileData.user.displayName || profileData.auth?.name || null,
-              }
-            : {
-                auth0Sub: profileData.auth?.sub || null,
-                email: profileData.auth?.email || null,
-                displayName: profileData.auth?.name || null,
-                role: null,
-              },
-        );
-        setRecentPlans(recentPlansData.plans || []);
-      } catch (loadError) {
-        setError(loadError.message);
-      } finally {
-        setIsLoadingProfile(false);
-      }
-    }
-
-    loadProtectedData();
-  }, [authMode, getAccessToken, isAuthenticated]);
-
-  const summaryCards = useMemo(() => {
-    if (!planResponse?.plan) {
-      return [];
-    }
-
-    const plan = planResponse.plan;
-
-    return [
-      { label: "Architecture", value: readable(plan.recommendation.architectureStyle) },
-      { label: "Deployment", value: readable(plan.recommendation.deploymentModel) },
-      { label: "Monthly Cost", value: `$${plan.cost.monthlyEstimate}` },
-      { label: "Region", value: plan.regionProfile.label },
-    ];
-  }, [planResponse]);
-
-  const isAuthReady = authMode === "configured";
-  const canGeneratePlan = isAuthReady && isAuthenticated && !isLoading;
-
-  async function handleSubmit(event) {
-    event.preventDefault();
-
-    if (!canGeneratePlan || !getAccessToken) {
-      setError(
-        isAuthReady
-          ? "Sign in before generating an architecture plan."
-          : "Auth0 is not configured yet. Add the frontend and backend Auth0 environment variables first.",
-      );
-      return;
-    }
-
-    setIsLoadingPlan(true);
-    setError("");
-
-    try {
-      const token = await getAccessToken();
-      const response = await fetch(`${API_BASE_URL}/plans/generate`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formValues),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(Array.isArray(data.details) ? data.details.join(", ") : data.error || "Failed to generate plan");
-      }
-
-      startTransition(() => {
-        setPlanResponse(data);
-      });
-
-      const recentPlansResponse = await fetch(`${API_BASE_URL}/plans/recent`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-      const recentPlansData = await recentPlansResponse.json();
-
-      if (recentPlansResponse.ok) {
-        setRecentPlans(recentPlansData.plans || []);
-      }
-    } catch (submitError) {
-      setError(submitError.message);
-    } finally {
-      setIsLoadingPlan(false);
-    }
-  }
-
-  function updateField(id, value) {
-    setFormValues((current) => ({
-      ...current,
-      [id]: value,
-    }));
-  }
-
-  function toggleFeature(feature) {
-    setFormValues((current) => {
-      const alreadySelected = current.coreFeatures.includes(feature);
-
-      return {
-        ...current,
-        coreFeatures: alreadySelected
-          ? current.coreFeatures.filter((entry) => entry !== feature)
-          : [...current.coreFeatures, feature],
-      };
-    });
-  }
-
-  function downloadDrawio() {
-    if (!planResponse?.plan?.drawioXml) {
-      return;
-    }
-
-    const fileName = `${slugify(planResponse.plan.input.projectName || "architecture-plan")}.drawio`;
-    downloadBlob(planResponse.plan.drawioXml, "application/xml", fileName);
-  }
-
-  function downloadPng() {
-    if (!planResponse?.plan?.diagram) {
-      return;
-    }
-
-    const fileName = `${slugify(planResponse.plan.input.projectName || "architecture-plan")}.png`;
-    const canvas = document.createElement("canvas");
-    canvas.width = 1160;
-    canvas.height = 640;
-    const context = canvas.getContext("2d");
-
-    context.fillStyle = "#f6efe6";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = "#2e241d";
-    context.font = "700 28px Georgia";
-    context.fillText(planResponse.plan.input.projectName || "Architecture Plan", 40, 50);
-
-    drawEdges(context, planResponse.plan.diagram.edges, planResponse.plan.diagram.nodes);
-    drawNodes(context, planResponse.plan.diagram.nodes);
-
-    const link = document.createElement("a");
-    link.href = canvas.toDataURL("image/png");
-    link.download = fileName;
-    link.click();
-  }
+function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onLogin, onLogout, onSignup, user }) {
+  const planner = usePlannerApp({
+    authMode,
+    getAccessToken,
+    isAuthenticated,
+    isLoading,
+  });
 
   return (
     <main className="page-shell">
-      <section className="hero">
-        <div className="hero-topbar">
-          <div>
-            <p className="eyebrow">Course Project MVP</p>
-            <h1>ArchitecturePlanner</h1>
-          </div>
-
-          <div className="auth-actions">
-            {authMode === "configured" ? (
-              isAuthenticated ? (
-                <>
-                  <div className="user-pill">
-                    <strong>{currentUser?.displayName || user?.name || user?.email || "Signed in"}</strong>
-                    <span>{currentUser?.role ? `Role: ${currentUser.role}` : user?.email || "Authenticated session"}</span>
-                  </div>
-                  <button type="button" className="secondary-button" onClick={onLogout}>
-                    Log out
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button type="button" className="secondary-button" onClick={onSignup} disabled={isLoading}>
-                    Sign up
-                  </button>
-                  <button type="button" className="primary-button" onClick={onLogin} disabled={isLoading}>
-                    {isLoading ? "Checking session..." : "Log in"}
-                  </button>
-                </>
-              )
-            ) : (
-              <div className="setup-pill">Auth0 setup required</div>
-            )}
-          </div>
-        </div>
-
-        <p className="hero-copy">
-          Deterministic architecture generation for startups and small companies. Answer the questionnaire, sign in with
-          Auth0, and get a stack recommendation, a development roadmap, and downloadable diagram artifacts.
-        </p>
-
-        {authMode === "not-configured" ? (
-          <div className="info-box">
-            <strong>Authentication is not configured yet.</strong>
-            <span>
-              Add the Auth0 environment variables from <code>frontend/.env.example</code> and <code>backend/.env.example</code>
-              to enable registration, login, and protected API calls.
-            </span>
-          </div>
-        ) : null}
-
-        {authMode === "configured" && !isAuthenticated && !isLoading ? (
-          <div className="info-box">
-            <strong>Sign in is required to generate and save plans.</strong>
-            <span>The questionnaire stays visible, but protected API calls are unlocked only after Auth0 login.</span>
-          </div>
-        ) : null}
-      </section>
+      <HeroSection
+        authMode={authMode}
+        currentUser={planner.currentUser}
+        isAuthenticated={isAuthenticated}
+        isLoading={isLoading}
+        onLogin={onLogin}
+        onLogout={onLogout}
+        onSignup={onSignup}
+        user={user}
+      />
 
       <div className="layout">
-        <section className="panel questionnaire-panel">
-          <div className="panel-heading">
-            <h2>Project Questionnaire</h2>
-            <p>These answers drive the rule engine directly. No AI is involved in the recommendation logic.</p>
-          </div>
+        <QuestionnairePanel
+          canGeneratePlan={planner.canGeneratePlan}
+          formValues={planner.formValues}
+          handleSubmit={planner.handleSubmit}
+          isLoadingPlan={planner.isLoadingPlan}
+          questionnaire={planner.questionnaire}
+          toggleFeature={planner.toggleFeature}
+          updateField={planner.updateField}
+        />
 
-          <form onSubmit={handleSubmit} className="questionnaire-form">
-            {questionnaire.map((field) => (
-              <FieldRenderer
-                key={field.id}
-                field={field}
-                value={formValues[field.id]}
-                onChange={updateField}
-                onToggleFeature={toggleFeature}
-              />
-            ))}
-
-            <button type="submit" className="primary-button" disabled={!canGeneratePlan || isLoadingPlan}>
-              {isLoadingPlan ? "Generating architecture..." : "Generate architecture plan"}
-            </button>
-          </form>
-        </section>
-
-        <section className="panel result-panel">
-          <div className="panel-heading">
-            <h2>Generated Result</h2>
-            <p>The result includes summary, cost estimate, roadmap, and exportable diagram files.</p>
-          </div>
-
-          {error ? <div className="error-box">{error}</div> : null}
-
-          {isAuthenticated ? (
-            <article className="narrative-card account-card">
-              <h3>Authenticated session</h3>
-              {isLoadingProfile ? (
-                <p>Syncing your Auth0 session with the backend...</p>
-              ) : (
-                <div className="account-meta">
-                  <span>{currentUser?.email || user?.email || "No email returned by Auth0"}</span>
-                  <span>{currentUser?.auth0Sub || "No Auth0 subject available"}</span>
-                </div>
-              )}
-            </article>
-          ) : null}
-
-          {recentPlans.length > 0 ? (
-            <article className="narrative-card">
-              <h3>Recent saved plans</h3>
-              <ul className="text-list">
-                {recentPlans.map((plan) => (
-                  <li key={plan.id}>
-                    <strong>{plan.projectName}</strong> created on {new Date(plan.createdAt).toLocaleString()}
-                  </li>
-                ))}
-              </ul>
-            </article>
-          ) : null}
-
-          {!planResponse?.plan ? (
-            <div className="empty-state">
-              <p>Your generated architecture plan will appear here after submission.</p>
-            </div>
-          ) : (
-            <div className="result-stack">
-              <div className="summary-grid">
-                {summaryCards.map((card) => (
-                  <article key={card.label} className="summary-card">
-                    <span>{card.label}</span>
-                    <strong>{card.value}</strong>
-                  </article>
-                ))}
-              </div>
-
-              <article className="narrative-card">
-                <h3>Recommendation summary</h3>
-                <p>{planResponse.plan.summary}</p>
-              </article>
-
-              <article className="narrative-card">
-                <h3>Architecture components</h3>
-                <div className="chip-grid">
-                  {planResponse.plan.recommendation.components.map((component) => (
-                    <span key={component} className="chip">
-                      {readable(component)}
-                    </span>
-                  ))}
-                </div>
-              </article>
-
-              <article className="narrative-card">
-                <h3>Cost estimate</h3>
-                <p>
-                  Estimated monthly infrastructure cost: <strong>${planResponse.plan.cost.monthlyEstimate}</strong>
-                </p>
-                <div className="cost-grid">
-                  {Object.entries(planResponse.plan.cost.breakdown).map(([key, value]) => (
-                    <div key={key} className="cost-line">
-                      <span>{readable(key)}</span>
-                      <strong>${value}</strong>
-                    </div>
-                  ))}
-                </div>
-              </article>
-
-              <article className="narrative-card">
-                <h3>Development roadmap</h3>
-                <ul className="text-list">
-                  {planResponse.plan.roadmap.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </article>
-
-              <article className="narrative-card">
-                <h3>Estimated development plan</h3>
-                <ul className="text-list">
-                  {planResponse.plan.developmentPlan.map((item) => (
-                    <li key={item.phase}>
-                      <strong>{item.phase}:</strong> {item.title}. {item.outcome}
-                    </li>
-                  ))}
-                </ul>
-              </article>
-
-              <article className="narrative-card">
-                <h3>Region notes</h3>
-                <ul className="text-list">
-                  {planResponse.plan.regionProfile.notes.map((note) => (
-                    <li key={note}>{note}</li>
-                  ))}
-                </ul>
-              </article>
-
-              {planResponse.plan.recommendation.risks.length > 0 ? (
-                <article className="narrative-card warning-card">
-                  <h3>Risks</h3>
-                  <ul className="text-list">
-                    {planResponse.plan.recommendation.risks.map((risk) => (
-                      <li key={risk}>{risk}</li>
-                    ))}
-                  </ul>
-                </article>
-              ) : null}
-
-              <div className="button-row">
-                <button type="button" className="secondary-button" onClick={downloadDrawio}>
-                  Download .drawio
-                </button>
-                <button type="button" className="secondary-button" onClick={downloadPng}>
-                  Download .png
-                </button>
-              </div>
-            </div>
-          )}
-        </section>
+        <ResultPanel
+          currentUser={planner.currentUser}
+          error={planner.error}
+          isAuthenticated={isAuthenticated}
+          isLoadingProfile={planner.isLoadingProfile}
+          planResponse={planner.planResponse}
+          recentPlans={planner.recentPlans}
+          summaryCards={planner.summaryCards}
+          user={user}
+        />
       </div>
     </main>
   );
-}
-
-function FieldRenderer({ field, value, onChange, onToggleFeature }) {
-  if (field.type === "text" || field.type === "number") {
-    return (
-      <label className="field">
-        <span>{field.label}</span>
-        <input
-          type={field.type}
-          value={value}
-          min={field.min}
-          placeholder={field.placeholder}
-          onChange={(event) => onChange(field.id, field.type === "number" ? Number(event.target.value) : event.target.value)}
-        />
-        <small>{field.helpText}</small>
-      </label>
-    );
-  }
-
-  if (field.type === "select") {
-    return (
-      <label className="field">
-        <span>{field.label}</span>
-        <select value={value} onChange={(event) => onChange(field.id, event.target.value)}>
-          {field.options.map((option) => (
-            <option key={option} value={option}>
-              {readable(option)}
-            </option>
-          ))}
-        </select>
-        <small>{field.helpText}</small>
-      </label>
-    );
-  }
-
-  if (field.type === "boolean") {
-    return (
-      <label className="toggle-field">
-        <div>
-          <span>{field.label}</span>
-          <small>{field.helpText}</small>
-        </div>
-        <input type="checkbox" checked={Boolean(value)} onChange={(event) => onChange(field.id, event.target.checked)} />
-      </label>
-    );
-  }
-
-  if (field.type === "multiselect") {
-    return (
-      <fieldset className="field fieldset">
-        <legend>{field.label}</legend>
-        <div className="checkbox-grid">
-          {field.options.map((option) => (
-            <label key={option} className="checkbox-card">
-              <input type="checkbox" checked={value.includes(option)} onChange={() => onToggleFeature(option)} />
-              <span>{readable(option)}</span>
-            </label>
-          ))}
-        </div>
-        <small>{field.helpText}</small>
-      </fieldset>
-    );
-  }
-
-  return null;
-}
-
-function drawNodes(context, nodes) {
-  for (const node of nodes) {
-    context.fillStyle = node.role === "database" ? "#d7c0a6" : "#fffdf8";
-    context.strokeStyle = "#3f2f24";
-    context.lineWidth = 2;
-    roundRect(context, node.x, node.y, 180, 64, 18);
-    context.fill();
-    context.stroke();
-    context.fillStyle = "#2e241d";
-    context.font = "600 17px Trebuchet MS";
-    context.fillText(node.label, node.x + 16, node.y + 36);
-  }
-}
-
-function drawEdges(context, edges, nodes) {
-  const nodeMap = new Map(nodes.map((node) => [node.id, node]));
-  context.strokeStyle = "#5b6c84";
-  context.lineWidth = 3;
-  context.font = "14px Trebuchet MS";
-  context.fillStyle = "#5b6c84";
-
-  for (const edge of edges) {
-    const from = nodeMap.get(edge.from);
-    const to = nodeMap.get(edge.to);
-
-    if (!from || !to) {
-      continue;
-    }
-
-    const startX = from.x + 180;
-    const startY = from.y + 32;
-    const endX = to.x;
-    const endY = to.y + 32;
-    const middleX = Math.round((startX + endX) / 2);
-
-    context.beginPath();
-    context.moveTo(startX, startY);
-    context.lineTo(middleX, startY);
-    context.lineTo(middleX, endY);
-    context.lineTo(endX, endY);
-    context.stroke();
-
-    if (edge.label) {
-      context.fillText(edge.label, middleX - 12, Math.min(startY, endY) - 8);
-    }
-  }
-}
-
-function roundRect(context, x, y, width, height, radius) {
-  context.beginPath();
-  context.moveTo(x + radius, y);
-  context.arcTo(x + width, y, x + width, y + height, radius);
-  context.arcTo(x + width, y + height, x, y + height, radius);
-  context.arcTo(x, y + height, x, y, radius);
-  context.arcTo(x, y, x + width, y, radius);
-  context.closePath();
-}
-
-function downloadBlob(content, mimeType, fileName) {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = fileName;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
-function readable(value) {
-  return String(value)
-    .replaceAll("-", " ")
-    .replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function slugify(value) {
-  return String(value)
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }
