@@ -3,11 +3,14 @@ import ReactDOM from "react-dom/client";
 import { Auth0Provider } from "@auth0/auth0-react";
 import { auth0Config, isAuthConfigured } from "./auth-config";
 import App from "./App";
+import { I18nProvider } from "./i18n";
 import "./styles.css";
 
 const app = (
   <React.StrictMode>
-    <App />
+    <I18nProvider>
+      <App />
+    </I18nProvider>
   </React.StrictMode>
 );
 

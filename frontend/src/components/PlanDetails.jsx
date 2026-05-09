@@ -1,17 +1,20 @@
 import { downloadDiagramPng, downloadDrawio } from "../utils/downloads";
-import { readable } from "../utils/formatters";
+import { useI18n } from "../i18n";
 
-function buildSummaryCards(plan) {
+function buildSummaryCards(plan, helpers) {
+  const { formatCurrency, getValueLabel, t } = helpers;
+
   return [
-    { label: "Architecture", value: readable(plan.recommendation.architectureStyle) },
-    { label: "Deployment", value: readable(plan.recommendation.deploymentModel) },
-    { label: "Monthly Cost", value: `$${plan.cost.monthlyEstimate}` },
-    { label: "Region", value: plan.regionProfile.label },
+    { label: t("plan.architecture"), value: getValueLabel(plan.recommendation.architectureStyle) },
+    { label: t("plan.deployment"), value: getValueLabel(plan.recommendation.deploymentModel) },
+    { label: t("plan.monthlyCost"), value: formatCurrency(plan.cost.monthlyEstimate) },
+    { label: t("plan.region"), value: getValueLabel(plan.regionProfile.code || plan.input.targetRegion) },
   ];
 }
 
 export function PlanDetails({ plan }) {
-  const summaryCards = buildSummaryCards(plan);
+  const { formatCurrency, getComponentLabel, getPlanSummary, getValueLabel, t, translateFixedText } = useI18n();
+  const summaryCards = buildSummaryCards(plan, { formatCurrency, getValueLabel, t });
 
   return (
     <div className="result-stack">
@@ -25,71 +28,71 @@ export function PlanDetails({ plan }) {
       </div>
 
       <article className="narrative-card">
-        <h3>Recommendation summary</h3>
-        <p>{plan.summary}</p>
+        <h3>{t("plan.recommendationSummary")}</h3>
+        <p>{getPlanSummary(plan)}</p>
       </article>
 
       <article className="narrative-card">
-        <h3>Architecture components</h3>
+        <h3>{t("plan.architectureComponents")}</h3>
         <div className="chip-grid">
           {plan.recommendation.components.map((component) => (
             <span key={component} className="chip">
-              {readable(component)}
+              {getComponentLabel(component)}
             </span>
           ))}
         </div>
       </article>
 
       <article className="narrative-card">
-        <h3>Cost estimate</h3>
+        <h3>{t("plan.costEstimate")}</h3>
         <p>
-          Estimated monthly infrastructure cost: <strong>${plan.cost.monthlyEstimate}</strong>
+          {t("plan.monthlyCostSentence", { value: formatCurrency(plan.cost.monthlyEstimate) })}
         </p>
         <div className="cost-grid">
           {Object.entries(plan.cost.breakdown).map(([key, value]) => (
             <div key={key} className="cost-line">
-              <span>{readable(key)}</span>
-              <strong>${value}</strong>
+              <span>{getValueLabel(key)}</span>
+              <strong>{formatCurrency(value)}</strong>
             </div>
           ))}
         </div>
       </article>
 
       <article className="narrative-card">
-        <h3>Development roadmap</h3>
+        <h3>{t("plan.developmentRoadmap")}</h3>
         <ul className="text-list">
           {plan.roadmap.map((item) => (
-            <li key={item}>{item}</li>
+            <li key={item}>{translateFixedText(item)}</li>
           ))}
         </ul>
       </article>
 
       <article className="narrative-card">
-        <h3>Estimated development plan</h3>
+        <h3>{t("plan.developmentPlan")}</h3>
         <ul className="text-list">
           {plan.developmentPlan.map((item) => (
             <li key={item.phase}>
-              <strong>{item.phase}:</strong> {item.title}. {item.outcome}
+              <strong>{translateFixedText(item.phase)}:</strong> {translateFixedText(item.title)}. {translateFixedText(item.outcome)}
             </li>
           ))}
         </ul>
       </article>
 
       <article className="narrative-card">
-        <h3>Region notes</h3>
+        <h3>{t("plan.regionNotes")}</h3>
         <ul className="text-list">
           {plan.regionProfile.notes.map((note) => (
-            <li key={note}>{note}</li>
+            <li key={note}>{translateFixedText(note)}</li>
           ))}
         </ul>
       </article>
 
       {plan.recommendation.risks.length > 0 ? (
         <article className="narrative-card warning-card">
-          <h3>Risks</h3>
+          <h3>{t("plan.risks")}</h3>
           <ul className="text-list">
             {plan.recommendation.risks.map((risk) => (
-              <li key={risk}>{risk}</li>
+              <li key={risk}>{translateFixedText(risk)}</li>
             ))}
           </ul>
         </article>
@@ -97,10 +100,19 @@ export function PlanDetails({ plan }) {
 
       <div className="button-row">
         <button type="button" className="secondary-button" onClick={() => downloadDrawio(plan)}>
-          Download .drawio
+          {t("plan.downloadDrawio")}
         </button>
-        <button type="button" className="secondary-button" onClick={() => downloadDiagramPng(plan)}>
-          Download .png
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={() =>
+            downloadDiagramPng(plan, {
+              fallbackTitle: t("plan.pngTitleFallback"),
+              translateFixedText,
+            })
+          }
+        >
+          {t("plan.downloadPng")}
         </button>
       </div>
     </div>

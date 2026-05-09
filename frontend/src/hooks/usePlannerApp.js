@@ -2,6 +2,7 @@ import { startTransition, useEffect, useState } from "react";
 
 import { API_BASE_URL } from "../config/api";
 import { defaultValues } from "../constants/planner";
+import { useI18n } from "../i18n";
 import { normalizeCurrentUser } from "../utils/formatters";
 
 const defaultSelectedProject = {
@@ -19,6 +20,7 @@ function normalizeProfileField(value) {
 }
 
 export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthenticated, isLoading }) {
+  const { t } = useI18n();
   const [activeView, setActiveView] = useState("planner");
   const [questionnaire, setQuestionnaire] = useState([]);
   const [formValues, setFormValues] = useState(defaultValues);
@@ -46,7 +48,7 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
     const token = options.token || (await getAccessToken?.());
 
     if (!token) {
-      throw new Error("Sign in before accessing protected project data.");
+      throw new Error(t("errors.protectedData"));
     }
 
     const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -72,12 +74,12 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
         const data = await response.json();
         setQuestionnaire(data.questionnaire || []);
       } catch (loadError) {
-        setError("Could not load questionnaire definition from the API.");
+        setError(t("errors.loadQuestionnaire"));
       }
     }
 
     loadQuestionnaire();
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (authMode !== "configured" || !getAccessToken) {
@@ -217,7 +219,7 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
 
   async function showProjectsView() {
     if (!isAuthReady || !isAuthenticated) {
-      setError("Sign in before opening your saved projects.");
+      setError(t("errors.openProjects"));
       return;
     }
 
@@ -242,7 +244,7 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
 
   async function showAdminView() {
     if (!isAdmin) {
-      setError("Admin access is required before opening the admin dashboard.");
+      setError(t("errors.adminAccess"));
       return;
     }
 
@@ -411,8 +413,8 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
     if (!canGeneratePlan || !getAccessToken) {
       setError(
         isAuthReady
-          ? "Sign in before generating an architecture plan."
-          : "Auth0 is not configured yet. Add the frontend and backend Auth0 environment variables first.",
+          ? t("errors.generatePlan")
+          : t("errors.auth0Missing"),
       );
       return;
     }

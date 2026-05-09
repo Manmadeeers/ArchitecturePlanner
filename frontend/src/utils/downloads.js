@@ -9,7 +9,7 @@ export function downloadDrawio(plan) {
   downloadBlob(plan.drawioXml, "application/xml", fileName);
 }
 
-export function downloadDiagramPng(plan) {
+export function downloadDiagramPng(plan, options = {}) {
   if (!plan?.diagram) {
     return;
   }
@@ -24,10 +24,10 @@ export function downloadDiagramPng(plan) {
   context.fillRect(0, 0, canvas.width, canvas.height);
   context.fillStyle = "#2e241d";
   context.font = "700 28px Georgia";
-  context.fillText(plan.input.projectName || "Architecture Plan", 40, 50);
+  context.fillText(plan.input.projectName || options.fallbackTitle || "Architecture Plan", 40, 50);
 
-  drawEdges(context, plan.diagram.edges, plan.diagram.nodes);
-  drawNodes(context, plan.diagram.nodes);
+  drawEdges(context, plan.diagram.edges, plan.diagram.nodes, options);
+  drawNodes(context, plan.diagram.nodes, options);
 
   const link = document.createElement("a");
   link.href = canvas.toDataURL("image/png");
@@ -45,7 +45,7 @@ function downloadBlob(content, mimeType, fileName) {
   URL.revokeObjectURL(url);
 }
 
-function drawNodes(context, nodes) {
+function drawNodes(context, nodes, options) {
   for (const node of nodes) {
     context.fillStyle = node.role === "database" ? "#d7c0a6" : "#fffdf8";
     context.strokeStyle = "#3f2f24";
@@ -55,11 +55,11 @@ function drawNodes(context, nodes) {
     context.stroke();
     context.fillStyle = "#2e241d";
     context.font = "600 17px Trebuchet MS";
-    context.fillText(node.label, node.x + 16, node.y + 36);
+    context.fillText(options.translateFixedText ? options.translateFixedText(node.label) : node.label, node.x + 16, node.y + 36);
   }
 }
 
-function drawEdges(context, edges, nodes) {
+function drawEdges(context, edges, nodes, options) {
   const nodeMap = new Map(nodes.map((node) => [node.id, node]));
   context.strokeStyle = "#5b6c84";
   context.lineWidth = 3;
@@ -88,7 +88,8 @@ function drawEdges(context, edges, nodes) {
     context.stroke();
 
     if (edge.label) {
-      context.fillText(edge.label, middleX - 12, Math.min(startY, endY) - 8);
+      const label = options.translateFixedText ? options.translateFixedText(edge.label) : edge.label;
+      context.fillText(label, middleX - 12, Math.min(startY, endY) - 8);
     }
   }
 }

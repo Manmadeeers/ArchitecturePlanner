@@ -1,4 +1,5 @@
 import { FieldRenderer } from "./FieldRenderer";
+import { useI18n } from "../i18n";
 
 export function QuestionnairePanel({
   canGeneratePlan,
@@ -9,18 +10,19 @@ export function QuestionnairePanel({
   toggleFeature,
   updateField,
 }) {
+  const { getQuestionnaireField, t } = useI18n();
   return (
     <section className="panel questionnaire-panel">
       <div className="panel-heading">
-        <h2>Project Questionnaire</h2>
-        <p>These answers drive the rule engine directly. No AI is involved in the recommendation logic.</p>
+        <h2>{t("questionnaire.title")}</h2>
+        <p>{t("questionnaire.description")}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="questionnaire-form">
         {questionnaire.map((field) => (
           <FieldRenderer
             key={field.id}
-            field={field}
+            field={getQuestionnaireField(field)}
             value={formValues[field.id]}
             onChange={updateField}
             onToggleFeature={toggleFeature}
@@ -28,7 +30,7 @@ export function QuestionnairePanel({
         ))}
 
         <button type="submit" className="primary-button" disabled={!canGeneratePlan || isLoadingPlan}>
-          {isLoadingPlan ? "Generating architecture..." : "Generate architecture plan"}
+          {isLoadingPlan ? t("questionnaire.submitting") : t("questionnaire.submit")}
         </button>
       </form>
     </section>

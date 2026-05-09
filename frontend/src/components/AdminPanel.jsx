@@ -1,19 +1,6 @@
 import { useState } from "react";
 
-import { readable } from "../utils/formatters";
-
-const REGION_LABELS = {
-  "north-america": "North America",
-  europe: "Europe",
-  asia: "Asia",
-  global: "Global",
-};
-
-const ARCHITECTURE_LABELS = {
-  monolith: "Monolith",
-  "modular-monolith": "Modular Monolith",
-  "scalable-services": "Scalable Services",
-};
+import { useI18n } from "../i18n";
 
 const ROADMAP_LABELS = {
   includeIdeaStageValidationStep: "Idea and prototype validation step",
@@ -42,6 +29,7 @@ export function AdminPanel({
   userDeleteInFlightId,
   userSaveInFlightId,
 }) {
+  const { formatCurrency, formatDate, formatDateTime, getComponentLabel, getRoleLabel, getValueLabel, t, translateFixedText } = useI18n();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingUserId, setEditingUserId] = useState(null);
   const [editDraft, setEditDraft] = useState({
@@ -83,7 +71,9 @@ export function AdminPanel({
 
   async function deleteUser(user) {
     const shouldDelete = window.confirm(
-      `Delete ${user.displayName || user.email || user.auth0Sub}? Their saved projects will be removed as well.`
+      t("admin.deleteConfirm", {
+        name: user.displayName || user.email || user.auth0Sub,
+      })
     );
 
     if (!shouldDelete) {
@@ -101,101 +91,101 @@ export function AdminPanel({
     <section className="admin-grid">
       <div className="panel admin-overview-panel">
         <div className="panel-heading">
-          <h2>Admin Dashboard</h2>
-          <p>Manage access, tune deterministic engine settings, and review system-wide architecture activity.</p>
+          <h2>{t("admin.title")}</h2>
+          <p>{t("admin.description")}</p>
         </div>
 
         {error ? <div className="error-box">{error}</div> : null}
 
         {isLoadingAdmin ? (
           <div className="empty-state">
-            <p>Loading admin workspace...</p>
+            <p>{t("admin.loading")}</p>
           </div>
         ) : (
           <>
             <div className="summary-grid admin-summary-grid">
               <article className="summary-card">
-                <span>Total users</span>
+                <span>{t("admin.totalUsers")}</span>
                 <strong>{adminAnalytics?.totals?.totalUsers ?? 0}</strong>
               </article>
               <article className="summary-card">
-                <span>Admin users</span>
+                <span>{t("admin.adminUsers")}</span>
                 <strong>{adminAnalytics?.totals?.totalAdmins ?? 0}</strong>
               </article>
               <article className="summary-card">
-                <span>Generated plans</span>
+                <span>{t("admin.generatedPlans")}</span>
                 <strong>{adminAnalytics?.totals?.totalPlans ?? 0}</strong>
               </article>
               <article className="summary-card">
-                <span>Average monthly estimate</span>
-                <strong>${adminAnalytics?.totals?.averageMonthlyEstimate ?? 0}</strong>
+                <span>{t("admin.averageMonthlyEstimate")}</span>
+                <strong>{formatCurrency(adminAnalytics?.totals?.averageMonthlyEstimate ?? 0)}</strong>
               </article>
             </div>
 
             <div className="admin-analytics-grid">
               <AnalyticsCard
-                title="Popular architectures"
+                title={t("admin.popularArchitectures")}
                 items={adminAnalytics?.mostPopularArchitectures}
-                formatLabel={(label) => readable(label)}
+                formatLabel={(label) => getValueLabel(label)}
               />
               <AnalyticsCard
-                title="Popular deployment models"
+                title={t("admin.popularDeploymentModels")}
                 items={adminAnalytics?.mostPopularDeploymentModels}
-                formatLabel={(label) => readable(label)}
+                formatLabel={(label) => getValueLabel(label)}
               />
               <AnalyticsCard
-                title="Common technology components"
+                title={t("admin.commonTechnologyComponents")}
                 items={adminAnalytics?.mostPopularTechnologyComponents}
-                formatLabel={(label) => readable(label)}
+                formatLabel={(label) => getComponentLabel(label)}
               />
               <AnalyticsCard
-                title="Most active regions"
+                title={t("admin.activeRegions")}
                 items={adminAnalytics?.mostPopularRegions}
-                formatLabel={(label) => REGION_LABELS[label] || readable(label)}
+                formatLabel={(label) => getValueLabel(label)}
               />
               <AnalyticsCard
-                title="Business types"
+                title={t("admin.businessTypes")}
                 items={adminAnalytics?.mostPopularBusinessTypes}
-                formatLabel={(label) => readable(label)}
+                formatLabel={(label) => getValueLabel(label)}
               />
               <AnalyticsCard
-                title="Stack patterns"
+                title={t("admin.stackPatterns")}
                 items={adminAnalytics?.topStackPatterns}
-                formatLabel={(label) => String(label).split(" + ").map(readable).join(" + ")}
+                formatLabel={(label) => String(label).split(" + ").map(getComponentLabel).join(" + ")}
               />
             </div>
 
             <div className="profile-grid">
               <article className="narrative-card">
-                <h3>Recent plan volume</h3>
+                <h3>{t("admin.recentPlanVolume")}</h3>
                 <div className="admin-list">
                   {(adminAnalytics?.recentPlanVolume || []).length > 0 ? (
                     adminAnalytics.recentPlanVolume.map((entry) => (
                       <div key={entry.label} className="admin-list-row">
-                        <span>{entry.label}</span>
+                        <span>{formatDate(entry.label)}</span>
                         <strong>{entry.count}</strong>
                       </div>
                     ))
                   ) : (
-                    <p className="muted-text">No plans have been generated yet.</p>
+                    <p className="muted-text">{t("admin.noPlansYet")}</p>
                   )}
                 </div>
               </article>
 
               <article className="narrative-card">
-                <h3>Recent admin activity</h3>
+                <h3>{t("admin.recentAdminActivity")}</h3>
                 <div className="admin-list">
                   {(adminAnalytics?.recentAdminActivity || []).length > 0 ? (
                     adminAnalytics.recentAdminActivity.map((entry) => (
                       <div key={entry.id} className="admin-audit-item">
-                        <strong>{readable(entry.action)}</strong>
+                        <strong>{translateFixedText(entry.action)}</strong>
                         <span>
-                          {entry.actorDisplayName || entry.actorEmail || "System"} on {new Date(entry.createdAt).toLocaleString()}
+                          {entry.actorDisplayName || entry.actorEmail || t("common.system")} {formatDateTime(entry.createdAt)}
                         </span>
                       </div>
                     ))
                   ) : (
-                    <p className="muted-text">No admin actions have been recorded yet.</p>
+                    <p className="muted-text">{t("admin.noAdminActivity")}</p>
                   )}
                 </div>
               </article>
@@ -206,15 +196,15 @@ export function AdminPanel({
 
       <div className="panel admin-users-panel">
         <div className="panel-heading">
-          <h2>User Management</h2>
-          <p>Promote or demote users and keep track of who is actively generating projects.</p>
+          <h2>{t("admin.userManagement")}</h2>
+          <p>{t("admin.userManagementDescription")}</p>
         </div>
 
         <label className="field admin-search-field">
-          <span>Search users</span>
+          <span>{t("admin.searchUsers")}</span>
           <input
             type="search"
-            placeholder="Filter by name, email, or Auth0 subject"
+            placeholder={t("admin.searchUsersPlaceholder")}
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
           />
@@ -234,25 +224,25 @@ export function AdminPanel({
                 <article key={user.id} className="narrative-card admin-user-card">
                   <div className="project-card-topline">
                     <div>
-                      <strong>{user.displayName || user.email || "Unnamed user"}</strong>
+                      <strong>{user.displayName || user.email || t("admin.unnamedUser")}</strong>
                       <div className="admin-user-meta">
-                        <span>{user.email || "No email provided"}</span>
-                        <span>Projects: {user.projectCount ?? 0}</span>
+                        <span>{user.email || t("admin.noEmail")}</span>
+                        <span>{t("admin.projectsCount", { count: user.projectCount ?? 0 })}</span>
                       </div>
                     </div>
-                    <span className={`admin-role-badge admin-role-badge-${user.role}`}>{user.role}</span>
+                    <span className={`admin-role-badge admin-role-badge-${user.role}`}>{getRoleLabel(user.role)}</span>
                   </div>
 
                   <div className="admin-user-meta">
                     <span>{user.auth0Sub}</span>
-                    <span>Joined {new Date(user.createdAt).toLocaleDateString()}</span>
-                    {isCurrentUser ? <span>Current signed-in admin</span> : null}
+                    <span>{t("admin.joined", { date: formatDate(user.createdAt) })}</span>
+                    {isCurrentUser ? <span>{t("admin.currentAdmin")}</span> : null}
                   </div>
 
                   {isEditingUser ? (
                     <div className="profile-grid admin-user-edit-grid">
                       <label className="field">
-                        <span>Display name</span>
+                        <span>{t("profile.displayName")}</span>
                         <input
                           type="text"
                           value={editDraft.displayName}
@@ -267,7 +257,7 @@ export function AdminPanel({
                       </label>
 
                       <label className="field">
-                        <span>Email</span>
+                        <span>{t("profile.email")}</span>
                         <input
                           type="email"
                           value={editDraft.email}
@@ -292,7 +282,7 @@ export function AdminPanel({
                           disabled={isMutatingUser}
                           onClick={() => saveUserProfile(user.id)}
                         >
-                          {isSavingUser ? "Saving..." : "Save changes"}
+                          {isSavingUser ? t("admin.savingChanges") : t("admin.saveChanges")}
                         </button>
                         <button
                           type="button"
@@ -300,7 +290,7 @@ export function AdminPanel({
                           disabled={isMutatingUser}
                           onClick={cancelEditingUser}
                         >
-                          Cancel
+                          {t("common.cancel")}
                         </button>
                       </>
                     ) : (
@@ -311,7 +301,7 @@ export function AdminPanel({
                           disabled={isMutatingUser}
                           onClick={() => beginEditingUser(user)}
                         >
-                          Edit details
+                          {t("admin.editDetails")}
                         </button>
                         <button
                           type="button"
@@ -319,7 +309,7 @@ export function AdminPanel({
                           disabled={isMutatingUser || isCurrentUser}
                           onClick={() => deleteUser(user)}
                         >
-                          {isDeletingUser ? "Deleting..." : "Delete user"}
+                          {isDeletingUser ? t("admin.deletingUser") : t("admin.deleteUser")}
                         </button>
                       </>
                     )}
@@ -332,7 +322,7 @@ export function AdminPanel({
                       disabled={user.role === "user" || isMutatingUser}
                       onClick={() => onChangeUserRole(user.id, "user")}
                     >
-                      {isUpdatingRole && user.role === "admin" ? "Updating..." : "Set as user"}
+                      {isUpdatingRole && user.role === "admin" ? t("admin.updating") : t("admin.setAsUser")}
                     </button>
                     <button
                       type="button"
@@ -340,7 +330,7 @@ export function AdminPanel({
                       disabled={user.role === "admin" || isMutatingUser}
                       onClick={() => onChangeUserRole(user.id, "admin")}
                     >
-                      {isUpdatingRole && user.role !== "admin" ? "Updating..." : "Make admin"}
+                      {isUpdatingRole && user.role !== "admin" ? t("admin.updating") : t("admin.makeAdmin")}
                     </button>
                   </div>
                 </article>
@@ -348,7 +338,7 @@ export function AdminPanel({
             })
           ) : (
             <div className="empty-state">
-              <p>No users match your current search.</p>
+              <p>{t("admin.noUsersMatch")}</p>
             </div>
           )}
         </div>
@@ -356,27 +346,27 @@ export function AdminPanel({
 
       <div className="panel admin-settings-panel">
         <div className="panel-heading">
-          <h2>Engine Settings</h2>
-          <p>Adjust safe deterministic inputs like cost weights, regional multipliers, and roadmap toggles.</p>
+          <h2>{t("admin.engineSettings")}</h2>
+          <p>{t("admin.engineSettingsDescription")}</p>
         </div>
 
         {engineSettingsRecord?.updatedAt ? (
           <p className="muted-text">
-            Last updated on {new Date(engineSettingsRecord.updatedAt).toLocaleString()}
-            {engineSettingsRecord.updatedBy ? ` by user #${engineSettingsRecord.updatedBy}` : ""}
+            {t("admin.lastUpdatedOn", { value: formatDateTime(engineSettingsRecord.updatedAt) })}
+            {engineSettingsRecord.updatedBy ? ` ${t("admin.updatedByUser", { userId: engineSettingsRecord.updatedBy })}` : ""}
           </p>
         ) : (
-          <p className="muted-text">Using default engine settings until the first admin save.</p>
+          <p className="muted-text">{t("admin.usingDefaultSettings")}</p>
         )}
 
         {engineSettingsDraft ? (
           <div className="questionnaire-form">
             <fieldset className="fieldset admin-settings-section">
-              <legend>Region cost multipliers</legend>
+              <legend>{t("admin.regionCostMultipliers")}</legend>
               <div className="profile-grid">
                 {Object.entries(engineSettingsDraft.regionMultipliers).map(([regionCode, value]) => (
                   <label key={regionCode} className="field">
-                    <span>{REGION_LABELS[regionCode] || readable(regionCode)}</span>
+                    <span>{getValueLabel(regionCode)}</span>
                     <input
                       type="number"
                       min="0.1"
@@ -390,11 +380,11 @@ export function AdminPanel({
             </fieldset>
 
             <fieldset className="fieldset admin-settings-section">
-              <legend>Base architecture costs</legend>
+              <legend>{t("admin.baseArchitectureCosts")}</legend>
               <div className="profile-grid">
                 {Object.entries(engineSettingsDraft.costModel.baseMonthlyCost).map(([architectureKey, value]) => (
                   <label key={architectureKey} className="field">
-                    <span>{ARCHITECTURE_LABELS[architectureKey] || readable(architectureKey)}</span>
+                    <span>{getValueLabel(architectureKey)}</span>
                     <input
                       type="number"
                       min="1"
@@ -408,10 +398,10 @@ export function AdminPanel({
             </fieldset>
 
             <fieldset className="fieldset admin-settings-section">
-              <legend>Cost model controls</legend>
+              <legend>{t("admin.costModelControls")}</legend>
               <div className="profile-grid">
                 <label className="field">
-                  <span>Feature component weight</span>
+                  <span>{t("admin.featureComponentWeight")}</span>
                   <input
                     type="number"
                     min="1"
@@ -421,7 +411,7 @@ export function AdminPanel({
                   />
                 </label>
                 <label className="field">
-                  <span>Monthly users divider</span>
+                  <span>{t("admin.monthlyUsersDivider")}</span>
                   <input
                     type="number"
                     min="1"
@@ -431,7 +421,7 @@ export function AdminPanel({
                   />
                 </label>
                 <label className="field">
-                  <span>Fast delivery surcharge</span>
+                  <span>{t("admin.fastDeliverySurcharge")}</span>
                   <input
                     type="number"
                     min="0"
@@ -444,13 +434,13 @@ export function AdminPanel({
             </fieldset>
 
             <fieldset className="fieldset admin-settings-section">
-              <legend>Roadmap toggles</legend>
+              <legend>{t("admin.roadmapToggles")}</legend>
               <div className="admin-toggle-list">
                 {Object.entries(engineSettingsDraft.roadmapRules).map(([ruleKey, enabled]) => (
                   <label key={ruleKey} className="toggle-field">
                     <div>
-                      <span>{ROADMAP_LABELS[ruleKey] || readable(ruleKey)}</span>
-                      <small>Enable or disable this deterministic roadmap step in future generated plans.</small>
+                      <span>{translateFixedText(ROADMAP_LABELS[ruleKey] || ruleKey)}</span>
+                      <small>{t("admin.roadmapToggleDescription")}</small>
                     </div>
                     <input
                       type="checkbox"
@@ -464,13 +454,13 @@ export function AdminPanel({
 
             <div className="button-row">
               <button type="button" className="primary-button" onClick={onSaveEngineSettings} disabled={isSavingEngineSettings}>
-                {isSavingEngineSettings ? "Saving settings..." : "Save engine settings"}
+                {isSavingEngineSettings ? t("admin.savingEngineSettings") : t("admin.saveEngineSettings")}
               </button>
             </div>
           </div>
         ) : (
           <div className="empty-state">
-            <p>Engine settings will appear here once the admin workspace finishes loading.</p>
+            <p>{t("admin.waitingEngineSettings")}</p>
           </div>
         )}
       </div>
@@ -479,6 +469,8 @@ export function AdminPanel({
 }
 
 function AnalyticsCard({ formatLabel, items, title }) {
+  const { t } = useI18n();
+
   return (
     <article className="narrative-card admin-list-card">
       <h3>{title}</h3>
@@ -491,7 +483,7 @@ function AnalyticsCard({ formatLabel, items, title }) {
             </div>
           ))
         ) : (
-          <p className="muted-text">Not enough data yet.</p>
+          <p className="muted-text">{t("common.notEnoughData")}</p>
         )}
       </div>
     </article>

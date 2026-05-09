@@ -1,6 +1,8 @@
-import { readable } from "../utils/formatters";
+import { useI18n } from "../i18n";
 
 export function FieldRenderer({ field, value, onChange, onToggleFeature }) {
+  const { getValueLabel } = useI18n();
+
   if (field.type === "text" || field.type === "number") {
     return (
       <label className="field">
@@ -24,7 +26,7 @@ export function FieldRenderer({ field, value, onChange, onToggleFeature }) {
         <select value={value} onChange={(event) => onChange(field.id, event.target.value)}>
           {field.options.map((option) => (
             <option key={option} value={option}>
-              {readable(option)}
+              {getValueLabel(option)}
             </option>
           ))}
         </select>
@@ -53,7 +55,7 @@ export function FieldRenderer({ field, value, onChange, onToggleFeature }) {
           {field.options.map((option) => (
             <label key={option} className="checkbox-card">
               <input type="checkbox" checked={value.includes(option)} onChange={() => onToggleFeature(option)} />
-              <span>{readable(option)}</span>
+              <span>{getValueLabel(option)}</span>
             </label>
           ))}
         </div>

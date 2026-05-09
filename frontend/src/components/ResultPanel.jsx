@@ -1,11 +1,13 @@
 import { PlanDetails } from "./PlanDetails";
+import { useI18n } from "../i18n";
 
 export function ResultPanel({ error, planResponse }) {
+  const { t } = useI18n();
   return (
     <section className="panel result-panel">
       <div className="panel-heading">
-        <h2>Generated Result</h2>
-        <p>The result includes summary, cost estimate, roadmap, and exportable diagram files.</p>
+        <h2>{t("result.title")}</h2>
+        <p>{t("result.description")}</p>
       </div>
 
       {error ? <div className="error-box">{error}</div> : null}
@@ -16,9 +18,11 @@ export function ResultPanel({ error, planResponse }) {
 }
 
 function EmptyState() {
+  const { t } = useI18n();
+
   return (
     <div className="empty-state">
-      <p>Your generated architecture plan will appear here after submission.</p>
+      <p>{t("result.empty")}</p>
     </div>
   );
 }

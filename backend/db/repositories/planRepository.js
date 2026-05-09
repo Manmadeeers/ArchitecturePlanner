@@ -13,6 +13,7 @@ function toPlanSummary(row) {
     summary: row.summary,
     architectureStyle: row.recommendationPayload?.architectureStyle || null,
     deploymentModel: row.recommendationPayload?.deploymentModel || null,
+    targetRegion: row.inputPayload?.targetRegion || null,
     monthlyEstimate: row.costPayload?.monthlyEstimate || null,
     createdAt: row.createdAt,
   };
@@ -95,6 +96,7 @@ function createPlanRepository() {
           planId: generatedPlans.planId,
           projectName: generatedPlans.projectName,
           summary: generatedPlans.summary,
+          inputPayload: generatedPlans.inputPayload,
           recommendationPayload: generatedPlans.recommendationPayload,
           costPayload: generatedPlans.costPayload,
           createdAt: generatedPlans.createdAt,
