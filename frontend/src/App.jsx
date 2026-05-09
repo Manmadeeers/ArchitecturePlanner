@@ -7,6 +7,7 @@ import { ProjectsPage } from "./components/ProjectsPage";
 import { QuestionnairePanel } from "./components/QuestionnairePanel";
 import { ResultPanel } from "./components/ResultPanel";
 import { usePlannerApp } from "./hooks/usePlannerApp";
+import { useThemePreference } from "./hooks/useThemePreference";
 
 export default function App() {
   return isAuthConfigured ? <AuthenticatedApp /> : <UnauthenticatedApp />;
@@ -57,6 +58,7 @@ function UnauthenticatedApp() {
 }
 
 function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onLogin, onLogout, onSignup, user }) {
+  const { theme, toggleTheme } = useThemePreference();
   const planner = usePlannerApp({
     authMode,
     getAccessToken,
@@ -77,6 +79,8 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
         onLogout={onLogout}
         onOpenProfile={planner.showProfileView}
         onSignup={onSignup}
+        onToggleTheme={toggleTheme}
+        theme={theme}
         user={user}
       />
 
@@ -110,13 +114,8 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
           />
 
           <ResultPanel
-            currentUser={planner.currentUser}
             error={planner.error}
-            isAuthenticated={isAuthenticated}
-            isLoadingProfile={planner.isLoadingProfile}
             planResponse={planner.planResponse}
-            recentPlans={planner.recentPlans}
-            user={user}
           />
         </div>
       )}
