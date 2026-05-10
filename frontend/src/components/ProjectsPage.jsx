@@ -5,7 +5,9 @@ export function ProjectsPage({
   error,
   isLoadingProjects,
   isLoadingSelectedProject,
+  onDeleteProject,
   onSelectProject,
+  projectDeleteInFlightId,
   projects,
   selectedProject,
 }) {
@@ -29,24 +31,46 @@ export function ProjectsPage({
           <div className="project-card-grid">
             {projects.map((project) => {
               const isActive = selectedProject?.plan?.planId === project.planId;
+              const isDeleting = projectDeleteInFlightId === project.planId;
+
+              function handleDeleteProject() {
+                const projectName = project.projectName || t("common.notProvided");
+                const shouldDelete = window.confirm(
+                  t("projects.deleteConfirm", {
+                    name: projectName,
+                  })
+                );
+
+                if (shouldDelete) {
+                  onDeleteProject(project.planId);
+                }
+              }
 
               return (
-                <button
-                  key={project.planId}
-                  type="button"
-                  className={`project-card ${isActive ? "project-card-active" : ""}`}
-                  onClick={() => onSelectProject(project.planId)}
-                >
-                  <div className="project-card-topline">
-                    <strong>{project.projectName}</strong>
-                    <span>{formatDate(project.createdAt)}</span>
+                <article key={project.planId} className={`project-card ${isActive ? "project-card-active" : ""}`}>
+                  <button
+                    type="button"
+                    className="project-card-surface"
+                    onClick={() => onSelectProject(project.planId)}
+                    disabled={isDeleting}
+                  >
+                    <div className="project-card-topline">
+                      <strong>{project.projectName}</strong>
+                      <span>{formatDate(project.createdAt)}</span>
+                    </div>
+                    <p>{getProjectSummary(project)}</p>
+                    <div className="project-card-meta">
+                      <span>{project.architectureStyle ? getValueLabel(project.architectureStyle) : t("projects.architectureTbd")}</span>
+                      <span>{project.monthlyEstimate ? formatCurrency(project.monthlyEstimate) : t("projects.noCostSaved")}</span>
+                    </div>
+                  </button>
+
+                  <div className="project-card-actions">
+                    <button type="button" className="danger-button" onClick={handleDeleteProject} disabled={isDeleting}>
+                      {isDeleting ? t("projects.deleting") : t("projects.delete")}
+                    </button>
                   </div>
-                  <p>{getProjectSummary(project)}</p>
-                  <div className="project-card-meta">
-                    <span>{project.architectureStyle ? getValueLabel(project.architectureStyle) : t("projects.architectureTbd")}</span>
-                    <span>{project.monthlyEstimate ? formatCurrency(project.monthlyEstimate) : t("projects.noCostSaved")}</span>
-                  </div>
-                </button>
+                </article>
               );
             })}
           </div>

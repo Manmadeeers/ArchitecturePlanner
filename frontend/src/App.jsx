@@ -123,7 +123,9 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
           error={planner.error}
           isLoadingProjects={planner.isLoadingProjects}
           isLoadingSelectedProject={planner.isLoadingSelectedProject}
+          onDeleteProject={planner.deleteProject}
           onSelectProject={planner.selectProject}
+          projectDeleteInFlightId={planner.projectDeleteInFlightId}
           projects={planner.projects}
           selectedProject={planner.selectedProject}
         />

@@ -721,6 +721,7 @@ code {
 .secondary-button,
 .danger-button,
 .project-card,
+.project-card-surface,
 .theme-toggle,
 .profile-trigger,
 .menu-trigger,
@@ -770,6 +771,7 @@ code {
 .secondary-button:hover,
 .danger-button:hover,
 .project-card:hover,
+.project-card-surface:hover,
 .theme-toggle:hover,
 .profile-trigger:hover,
 .menu-trigger:hover,
@@ -782,7 +784,8 @@ code {
 .secondary-button:disabled,
 .danger-button:disabled,
 .language-button:disabled,
-.menu-action-button:disabled {
+.menu-action-button:disabled,
+.project-card-surface:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
@@ -883,15 +886,30 @@ code {
 
 .project-card {
   display: grid;
-  gap: 12px;
+  gap: 14px;
   width: 100%;
-  text-align: left;
   padding: 18px;
   border-radius: 20px;
   border: 1px solid var(--border-soft);
   background: var(--bg-card);
   color: var(--text-primary);
+}
+
+.project-card-surface {
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  border: 0;
   cursor: pointer;
+}
+
+.project-card-actions {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .project-card-active {
@@ -934,6 +952,7 @@ code {
 .language-button:focus-visible,
 .menu-action-button:focus-visible,
 .project-card:focus-visible,
+.project-card-surface:focus-visible,
 .field input:focus-visible,
 .field select:focus-visible {
   outline: none;

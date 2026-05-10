@@ -39,6 +39,7 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
   const [isLoadingSelectedProject, setIsLoadingSelectedProject] = useState(false);
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(false);
   const [isSavingEngineSettings, setIsSavingEngineSettings] = useState(false);
+  const [projectDeleteInFlightId, setProjectDeleteInFlightId] = useState(null);
   const [roleUpdateInFlightId, setRoleUpdateInFlightId] = useState(null);
   const [userSaveInFlightId, setUserSaveInFlightId] = useState(null);
   const [userDeleteInFlightId, setUserDeleteInFlightId] = useState(null);
@@ -232,7 +233,11 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
       const nextProjects = data.plans || [];
       setProjects(nextProjects);
 
-      if (nextProjects.length > 0 && !selectedProject?.plan?.planId) {
+      const selectedPlanId = selectedProject?.plan?.planId;
+
+      if (nextProjects.length === 0) {
+        setSelectedProject(defaultSelectedProject);
+      } else if (!nextProjects.some((project) => project.planId === selectedPlanId)) {
         await selectProject(nextProjects[0].planId);
       }
     } catch (loadError) {
@@ -297,6 +302,42 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
       setError(loadError.message);
     } finally {
       setIsLoadingSelectedProject(false);
+    }
+  }
+
+  async function deleteProject(planId) {
+    if (!planId) {
+      return false;
+    }
+
+    setProjectDeleteInFlightId(planId);
+    setError("");
+
+    try {
+      await fetchJson(`/plans/${encodeURIComponent(planId)}`, {
+        method: "DELETE",
+      });
+
+      const nextProjects = projects.filter((project) => project.planId !== planId);
+      const nextRecentPlans = recentPlans.filter((project) => project.planId !== planId);
+
+      setProjects(nextProjects);
+      setRecentPlans(nextRecentPlans);
+
+      if (selectedProject?.plan?.planId === planId) {
+        setSelectedProject(defaultSelectedProject);
+
+        if (nextProjects.length > 0) {
+          await selectProject(nextProjects[0].planId);
+        }
+      }
+
+      return true;
+    } catch (deleteError) {
+      setError(deleteError.message);
+      return false;
+    } finally {
+      setProjectDeleteInFlightId(null);
     }
   }
 
@@ -521,6 +562,7 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
     canGeneratePlan,
     changeAdminUserRole,
     currentUser,
+    deleteProject,
     deleteAdminUser,
     engineSettingsDraft,
     engineSettingsRecord,
@@ -536,6 +578,7 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
     isLoadingSelectedProject,
     isSavingEngineSettings,
     planResponse,
+    projectDeleteInFlightId,
     projects,
     questionnaire,
     recentPlans,

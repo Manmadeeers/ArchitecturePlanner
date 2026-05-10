@@ -50,6 +50,24 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+router.delete("/:planId", async (req, res, next) => {
+  try {
+    const deletedPlan = await repository.deleteUserPlanByPlanId(req.currentUser?.id, req.params.planId);
+
+    if (!deletedPlan) {
+      return res.status(404).json({
+        error: "Project not found for the current user.",
+      });
+    }
+
+    return res.status(200).json({
+      deletedPlan,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.get("/:planId", async (req, res, next) => {
   try {
     const savedPlan = await repository.getUserPlanByPlanId(req.currentUser?.id, req.params.planId);

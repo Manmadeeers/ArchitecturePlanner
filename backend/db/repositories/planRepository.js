@@ -154,6 +154,25 @@ function createPlanRepository() {
         plan: toStoredPlan(row),
       };
     },
+
+    async deleteUserPlanByPlanId(userId, planId) {
+      const db = getDb();
+
+      if (!db || !userId || !planId) {
+        return null;
+      }
+
+      const [row] = await db
+        .delete(generatedPlans)
+        .where(and(eq(generatedPlans.userId, userId), eq(generatedPlans.planId, planId)))
+        .returning({
+          id: generatedPlans.id,
+          planId: generatedPlans.planId,
+          projectName: generatedPlans.projectName,
+        });
+
+      return row || null;
+    },
   };
 }
 
