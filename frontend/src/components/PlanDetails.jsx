@@ -1,4 +1,4 @@
-import { downloadDiagramPng, downloadDrawio } from "../utils/downloads";
+import { downloadDiagramSvg, downloadDrawio } from "../utils/downloads";
 import { useI18n } from "../i18n";
 
 function buildSummaryCards(plan, helpers) {
@@ -106,13 +106,13 @@ export function PlanDetails({ plan }) {
           type="button"
           className="secondary-button"
           onClick={() =>
-            downloadDiagramPng(plan, {
-              fallbackTitle: t("plan.pngTitleFallback"),
+            downloadDiagramSvg(plan, {
+              fallbackTitle: t("plan.diagramTitleFallback"),
               translateFixedText,
             })
           }
         >
-          {t("plan.downloadPng")}
+          {t("plan.downloadSvg")}
         </button>
       </div>
     </div>

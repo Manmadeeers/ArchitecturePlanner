@@ -116,8 +116,8 @@ const messages = {
       regionNotes: "Региональные заметки",
       risks: "Риски",
       downloadDrawio: "Скачать .drawio",
-      downloadPng: "Скачать .png",
-      pngTitleFallback: "Архитектурный план",
+      downloadSvg: "Скачать .svg",
+      diagramTitleFallback: "Архитектурный план",
     },
     admin: {
       title: "Админ-панель",
@@ -282,8 +282,8 @@ const messages = {
       regionNotes: "Region notes",
       risks: "Risks",
       downloadDrawio: "Download .drawio",
-      downloadPng: "Download .png",
-      pngTitleFallback: "Architecture Plan",
+      downloadSvg: "Download .svg",
+      diagramTitleFallback: "Architecture Plan",
     },
     admin: {
       title: "Admin Dashboard",
@@ -448,8 +448,8 @@ const messages = {
       regionNotes: "Рэгіянальныя заўвагі",
       risks: "Рызыкі",
       downloadDrawio: "Спампаваць .drawio",
-      downloadPng: "Спампаваць .png",
-      pngTitleFallback: "Архітэктурны план",
+      downloadSvg: "Спампаваць .svg",
+      diagramTitleFallback: "Архітэктурны план",
     },
     admin: {
       title: "Адмін-панэль",
@@ -1341,7 +1341,7 @@ export function I18nProvider({ children }) {
 
   function getPlanSummary(plan) {
     return t("plan.summaryTemplate", {
-      projectName: plan?.input?.projectName || t("plan.pngTitleFallback"),
+      projectName: plan?.input?.projectName || t("plan.diagramTitleFallback"),
       architectureStyle: getValueLabel(plan?.recommendation?.architectureStyle || "monolith"),
       deploymentModel: getValueLabel(plan?.recommendation?.deploymentModel || "cloud"),
       region: getValueLabel(plan?.regionProfile?.code || plan?.input?.targetRegion || "north-america"),
