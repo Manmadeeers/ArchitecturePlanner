@@ -1,0 +1,43 @@
+{
+  "summary": {
+    "generatedAt": "2026-05-13T19:13:44.088Z",
+    "virtualUsers": 25,
+    "durationSeconds": 60,
+    "totalRequests": 10394,
+    "successfulRequests": 10394,
+    "failedRequests": 0,
+    "successRate": 100,
+    "errorRate": 0,
+    "averageResponseTimeMs": 144.50056415239578,
+    "minResponseTimeMs": 0.552599999999984,
+    "maxResponseTimeMs": 847.3906999999963,
+    "p95ResponseTimeMs": 545.2509999999966,
+    "requestsPerSecond": 173.23333333333332
+  },
+  "routes": [
+    {
+      "routeName": "GET /api/questionnaire",
+      "totalRequests": 3463,
+      "successfulRequests": 3463,
+      "failedRequests": 0,
+      "averageResponseTimeMs": 3.5582004909038574,
+      "p95ResponseTimeMs": 7.762900000001537
+    },
+    {
+      "routeName": "GET /api/admin/analytics/overview",
+      "totalRequests": 3460,
+      "successfulRequests": 3460,
+      "failedRequests": 0,
+      "averageResponseTimeMs": 128.52227341040475,
+      "p95ResponseTimeMs": 277.9834000000046
+    },
+    {
+      "routeName": "POST /api/plans/generate",
+      "totalRequests": 3471,
+      "successfulRequests": 3471,
+      "failedRequests": 0,
+      "averageResponseTimeMs": 301.04573595505616,
+      "p95ResponseTimeMs": 614.0399000000034
+    }
+  ]
+}

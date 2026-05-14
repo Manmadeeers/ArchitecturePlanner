@@ -205,7 +205,9 @@ function createPlanId(projectName) {
     .replace(/^-+|-+$/g, "")
     .slice(0, 32);
 
-  return `${slug || "architecture-plan"}-${Date.now()}`;
+  const timestamp = Date.now().toString(36);
+  const randomSuffix = Math.random().toString(36).slice(2, 8);
+  return `${slug || "architecture-plan"}-${timestamp}-${randomSuffix}`;
 }
 
 module.exports = {

@@ -30,7 +30,9 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
   const [projects, setProjects] = useState([]);
   const [selectedProject, setSelectedProject] = useState(defaultSelectedProject);
   const [adminAnalytics, setAdminAnalytics] = useState(null);
+  const [adminTechnologyCategories, setAdminTechnologyCategories] = useState([]);
   const [adminUsers, setAdminUsers] = useState([]);
+  const [adminTechnologies, setAdminTechnologies] = useState([]);
   const [engineSettingsDraft, setEngineSettingsDraft] = useState(null);
   const [engineSettingsRecord, setEngineSettingsRecord] = useState(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
@@ -43,6 +45,8 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
   const [roleUpdateInFlightId, setRoleUpdateInFlightId] = useState(null);
   const [userSaveInFlightId, setUserSaveInFlightId] = useState(null);
   const [userDeleteInFlightId, setUserDeleteInFlightId] = useState(null);
+  const [technologySaveInFlightId, setTechnologySaveInFlightId] = useState(null);
+  const [technologyDeleteInFlightId, setTechnologyDeleteInFlightId] = useState(null);
   const [error, setError] = useState("");
 
   async function fetchJson(path, options = {}) {
@@ -90,7 +94,9 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
       setProjects([]);
       setSelectedProject(defaultSelectedProject);
       setAdminAnalytics(null);
+      setAdminTechnologyCategories([]);
       setAdminUsers([]);
+      setAdminTechnologies([]);
       setEngineSettingsDraft(null);
       setEngineSettingsRecord(null);
       return;
@@ -107,7 +113,9 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
       setProjects([]);
       setSelectedProject(defaultSelectedProject);
       setAdminAnalytics(null);
+      setAdminTechnologyCategories([]);
       setAdminUsers([]);
+      setAdminTechnologies([]);
       setEngineSettingsDraft(null);
       setEngineSettingsRecord(null);
       return;
@@ -203,6 +211,16 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
     return data;
   }
 
+  async function loadAdminTechnologies(token) {
+    const { data } = await fetchJson("/admin/technologies?includeInactive=true", { token });
+    return data.technologies || [];
+  }
+
+  async function loadAdminTechnologyCategories(token) {
+    const { data } = await fetchJson("/admin/technology-categories", { token });
+    return data.categories || [];
+  }
+
   async function loadEngineSettings(token) {
     const { data } = await fetchJson("/admin/settings/engine", { token });
     return data;
@@ -259,14 +277,18 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
 
     try {
       const token = await getAccessToken();
-      const [usersData, analyticsData, settingsData] = await Promise.all([
+      const [usersData, analyticsData, categoriesData, technologiesData, settingsData] = await Promise.all([
         loadAdminUsers(token),
         loadAdminAnalytics(token),
+        loadAdminTechnologyCategories(token),
+        loadAdminTechnologies(token),
         loadEngineSettings(token),
       ]);
 
       setAdminUsers(usersData);
       setAdminAnalytics(analyticsData);
+      setAdminTechnologyCategories(categoriesData);
+      setAdminTechnologies(technologiesData);
       setEngineSettingsRecord(settingsData);
       setEngineSettingsDraft(settingsData.settings || null);
     } catch (loadError) {
@@ -448,6 +470,71 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
     }
   }
 
+  async function createAdminTechnology(input) {
+    setTechnologySaveInFlightId("new");
+    setError("");
+
+    try {
+      const { token } = await fetchJson("/admin/technologies", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(input || {}),
+      });
+
+      setAdminTechnologies(await loadAdminTechnologies(token));
+      return true;
+    } catch (saveError) {
+      setError(saveError.message);
+      return false;
+    } finally {
+      setTechnologySaveInFlightId(null);
+    }
+  }
+
+  async function updateAdminTechnology(technologyId, input) {
+    setTechnologySaveInFlightId(technologyId);
+    setError("");
+
+    try {
+      const { token } = await fetchJson(`/admin/technologies/${technologyId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(input || {}),
+      });
+
+      setAdminTechnologies(await loadAdminTechnologies(token));
+      return true;
+    } catch (saveError) {
+      setError(saveError.message);
+      return false;
+    } finally {
+      setTechnologySaveInFlightId(null);
+    }
+  }
+
+  async function deleteAdminTechnology(technologyId) {
+    setTechnologyDeleteInFlightId(technologyId);
+    setError("");
+
+    try {
+      const { token } = await fetchJson(`/admin/technologies/${technologyId}`, {
+        method: "DELETE",
+      });
+
+      setAdminTechnologies(await loadAdminTechnologies(token));
+      return true;
+    } catch (deleteError) {
+      setError(deleteError.message);
+      return false;
+    } finally {
+      setTechnologyDeleteInFlightId(null);
+    }
+  }
+
   async function handleSubmit(event) {
     event.preventDefault();
 
@@ -558,11 +645,14 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
   return {
     activeView,
     adminAnalytics,
+    adminTechnologyCategories,
+    adminTechnologies,
     adminUsers,
     canGeneratePlan,
     changeAdminUserRole,
     currentUser,
     deleteProject,
+    deleteAdminTechnology,
     deleteAdminUser,
     engineSettingsDraft,
     engineSettingsRecord,
@@ -583,8 +673,12 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
     questionnaire,
     recentPlans,
     roleUpdateInFlightId,
+    createAdminTechnology,
     saveAdminUserProfile,
     saveEngineSettings,
+    technologyDeleteInFlightId,
+    technologySaveInFlightId,
+    updateAdminTechnology,
     selectedProject,
     selectProject,
     showAdminView,

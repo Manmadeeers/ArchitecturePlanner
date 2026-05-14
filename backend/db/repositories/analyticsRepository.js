@@ -1,21 +1,36 @@
-const { desc } = require("drizzle-orm");
+const { desc, sql } = require("drizzle-orm");
 
 const { getDb } = require("../client");
-const { generatedPlans, users } = require("../schema");
+const { planComponents, planRunTechnologies, planRuns, technologies, users } = require("../schema");
 const { createAdminAuditRepository } = require("./adminAuditRepository");
 
 const auditRepository = createAdminAuditRepository();
 
-function incrementCounter(map, key) {
-  if (!key) {
-    return;
-  }
-
-  map.set(key, (map.get(key) || 0) + 1);
+function topEntriesByPlanRunColumn(db, column, limit = 5) {
+  return db
+    .select({
+      label: column,
+      count: sql`count(*)`.mapWith(Number),
+    })
+    .from(planRuns)
+    .where(sql`${column} is not null`)
+    .groupBy(column)
+    .orderBy(sql`count(*) desc`)
+    .limit(limit);
 }
 
-function topEntries(map, limit = 5) {
-  return [...map.entries()]
+function topEntriesFromLabels(labels, limit = 5) {
+  const counts = new Map();
+
+  for (const label of labels) {
+    if (!label) {
+      continue;
+    }
+
+    counts.set(label, (counts.get(label) || 0) + 1);
+  }
+
+  return [...counts.entries()]
     .sort((left, right) => right[1] - left[1])
     .slice(0, limit)
     .map(([label, count]) => ({ label, count }));
@@ -45,79 +60,91 @@ function createAnalyticsRepository() {
         };
       }
 
-      const [planRows, userRows, recentAdminActivity] = await Promise.all([
+      const businessTypeExpr = sql`${planRuns.inputPayload} ->> 'businessType'`;
+
+      const [
+        userTotals,
+        planTotals,
+        mostPopularArchitectures,
+        mostPopularDeploymentModels,
+        mostPopularRegions,
+        mostPopularBusinessTypes,
+        mostPopularTechnologyComponents,
+        stackRows,
+        recentPlanVolumeRows,
+        recentAdminActivity,
+      ] = await Promise.all([
         db
           .select({
-            createdAt: generatedPlans.createdAt,
-            recommendationPayload: generatedPlans.recommendationPayload,
-            inputPayload: generatedPlans.inputPayload,
-            costPayload: generatedPlans.costPayload,
-          })
-          .from(generatedPlans)
-          .orderBy(desc(generatedPlans.createdAt)),
-        db
-          .select({
-            id: users.id,
-            role: users.role,
+            totalUsers: sql`count(*)`.mapWith(Number),
+            totalAdmins: sql`count(*) filter (where ${users.role} = 'admin')`.mapWith(Number),
           })
           .from(users),
+        db
+          .select({
+            totalPlans: sql`count(*)`.mapWith(Number),
+            averageMonthlyEstimate: sql`coalesce(round(avg(${planRuns.monthlyEstimate})), 0)`.mapWith(Number),
+          })
+          .from(planRuns),
+        topEntriesByPlanRunColumn(db, planRuns.architectureStyle),
+        topEntriesByPlanRunColumn(db, planRuns.deploymentModel),
+        topEntriesByPlanRunColumn(db, planRuns.targetRegion),
+        db
+          .select({
+            label: businessTypeExpr,
+            count: sql`count(*)`.mapWith(Number),
+          })
+          .from(planRuns)
+          .where(sql`${businessTypeExpr} is not null`)
+          .groupBy(businessTypeExpr)
+          .orderBy(sql`count(*) desc`)
+          .limit(5),
+        db
+          .select({
+            label: technologies.name,
+            count: sql`count(*)`.mapWith(Number),
+          })
+          .from(planRunTechnologies)
+          .innerJoin(technologies, sql`${technologies.id} = ${planRunTechnologies.technologyId}`)
+          .groupBy(technologies.name)
+          .orderBy(sql`count(*) desc`)
+          .limit(5),
+        db
+          .select({
+            stackLabel: sql`string_agg(${planComponents.componentCode}, ' + ' order by ${planComponents.componentCode})`,
+          })
+          .from(planRuns)
+          .leftJoin(planComponents, sql`${planComponents.planRunId} = ${planRuns.id}`)
+          .groupBy(planRuns.id),
+        db
+          .select({
+            label: sql`to_char(date_trunc('day', ${planRuns.createdAt}), 'YYYY-MM-DD')`,
+            count: sql`count(*)`.mapWith(Number),
+          })
+          .from(planRuns)
+          .groupBy(sql`date_trunc('day', ${planRuns.createdAt})`)
+          .orderBy(desc(sql`date_trunc('day', ${planRuns.createdAt})`))
+          .limit(14),
         auditRepository.listRecentActions(),
       ]);
 
-      const architectureCounts = new Map();
-      const deploymentCounts = new Map();
-      const componentCounts = new Map();
-      const regionCounts = new Map();
-      const businessTypeCounts = new Map();
-      const stackCounts = new Map();
-      const dailyPlanCounts = new Map();
-
-      let monthlyEstimateTotal = 0;
-      let monthlyEstimateCount = 0;
-
-      for (const row of planRows) {
-        incrementCounter(architectureCounts, row.recommendationPayload?.architectureStyle);
-        incrementCounter(deploymentCounts, row.recommendationPayload?.deploymentModel);
-        incrementCounter(regionCounts, row.inputPayload?.targetRegion);
-        incrementCounter(businessTypeCounts, row.inputPayload?.businessType);
-
-        const components = Array.isArray(row.recommendationPayload?.components)
-          ? [...row.recommendationPayload.components].sort()
-          : [];
-
-        for (const component of components) {
-          incrementCounter(componentCounts, component);
-        }
-
-        if (components.length > 0) {
-          incrementCounter(stackCounts, components.join(" + "));
-        }
-
-        const monthlyEstimate = Number(row.costPayload?.monthlyEstimate);
-        if (Number.isFinite(monthlyEstimate)) {
-          monthlyEstimateTotal += monthlyEstimate;
-          monthlyEstimateCount += 1;
-        }
-
-        const createdAt = row.createdAt instanceof Date ? row.createdAt : new Date(row.createdAt);
-        incrementCounter(dailyPlanCounts, createdAt.toISOString().slice(0, 10));
-      }
+      const userTotalsRow = userTotals[0] || { totalUsers: 0, totalAdmins: 0 };
+      const planTotalsRow = planTotals[0] || { totalPlans: 0, averageMonthlyEstimate: 0 };
 
       return {
         totals: {
-          totalUsers: userRows.length,
-          totalAdmins: userRows.filter((row) => row.role === "admin").length,
-          totalPlans: planRows.length,
-          averageMonthlyEstimate:
-            monthlyEstimateCount > 0 ? Math.round(monthlyEstimateTotal / monthlyEstimateCount) : 0,
+          totalUsers: userTotalsRow.totalUsers || 0,
+          totalAdmins: userTotalsRow.totalAdmins || 0,
+          totalPlans: planTotalsRow.totalPlans || 0,
+          averageMonthlyEstimate: planTotalsRow.averageMonthlyEstimate || 0,
         },
-        mostPopularArchitectures: topEntries(architectureCounts),
-        mostPopularDeploymentModels: topEntries(deploymentCounts),
-        mostPopularTechnologyComponents: topEntries(componentCounts),
-        mostPopularRegions: topEntries(regionCounts),
-        mostPopularBusinessTypes: topEntries(businessTypeCounts),
-        topStackPatterns: topEntries(stackCounts),
-        recentPlanVolume: topEntries(dailyPlanCounts, 14).sort((left, right) => left.label.localeCompare(right.label)),
+        mostPopularArchitectures,
+        mostPopularDeploymentModels,
+        mostPopularTechnologyComponents,
+        mostPopularRegions,
+        mostPopularBusinessTypes,
+        topStackPatterns: topEntriesFromLabels(stackRows.map((row) => row.stackLabel)),
+        recentPlanVolume: [...recentPlanVolumeRows].sort((left, right) => left.label.localeCompare(right.label)),
         recentAdminActivity,
       };
     },

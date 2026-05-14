@@ -43,6 +43,20 @@ export function PlanDetails({ plan }) {
         </div>
       </article>
 
+      {(plan.technologies || []).length > 0 ? (
+        <article className="narrative-card">
+          <h3>Selected technologies</h3>
+          <ul className="text-list">
+            {plan.technologies.map((technology) => (
+              <li key={`${technology.technologyId}-${technology.name}`}>
+                <strong>{technology.name}</strong> ({technology.categoryName || technology.category || "Other"}){" "}
+                {translateFixedText(technology.justification || "")}
+              </li>
+            ))}
+          </ul>
+        </article>
+      ) : null}
+
       <article className="narrative-card">
         <h3>{t("plan.costEstimate")}</h3>
         <p>

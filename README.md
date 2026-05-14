@@ -6,7 +6,7 @@ ArchitecturePlanner is a course-project MVP for startups and small companies tha
 
 - `backend/`: Express API with questionnaire endpoint, deterministic rule engine, and plan generation endpoint.
 - `frontend/`: React interface for filling the questionnaire and viewing generated results.
-- `backend/db/schema.sql`: PostgreSQL schema for storing generated plans and cached regional data.
+- `backend/db/schema.sql`: PostgreSQL schema with normalized project/plan-run storage, analytics-friendly indexes, and regional cache tables.
 - Diagram export support:
   - `.drawio` generated from backend XML
   - `.png` generated in the browser from the returned diagram model
@@ -160,6 +160,9 @@ If you already have an existing Postgres volume from an older version of the pro
 - `backend/db/migrations/001_link_generated_plans_to_users.sql`
 - `backend/db/migrations/002_store_full_plan_payloads.sql`
 - `backend/db/migrations/003_add_admin_tables.sql`
+- `backend/db/migrations/004_normalize_plan_storage.sql`
+- `backend/db/migrations/005_add_technology_catalog.sql`
+- `backend/db/migrations/006_add_technology_categories.sql`
 
 ## Database setup
 

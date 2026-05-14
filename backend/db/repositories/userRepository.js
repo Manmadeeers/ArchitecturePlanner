@@ -1,6 +1,6 @@
 const { desc, eq, sql } = require("drizzle-orm");
 
-const { generatedPlans, users } = require("../schema");
+const { projects, users } = require("../schema");
 const { getDb } = require("../client");
 const { createAdminAuditRepository } = require("./adminAuditRepository");
 
@@ -114,10 +114,10 @@ function createUserRepository() {
       return db
         .select({
           ...userSelection(),
-          projectCount: sql`count(${generatedPlans.id})`.mapWith(Number),
+          projectCount: sql`count(distinct ${projects.id})`.mapWith(Number),
         })
         .from(users)
-        .leftJoin(generatedPlans, eq(generatedPlans.userId, users.id))
+        .leftJoin(projects, eq(projects.userId, users.id))
         .groupBy(users.id)
         .orderBy(desc(users.createdAt));
     },

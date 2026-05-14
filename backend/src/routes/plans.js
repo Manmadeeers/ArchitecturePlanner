@@ -11,14 +11,38 @@ const repository = createPlanRepository();
 
 router.use(requireAuth, attachCurrentUser);
 
+function parseNonNegativeInteger(value) {
+  if (value === undefined) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
 router.post("/generate", async (req, res, next) => {
   try {
     const engineSettings = await engineSettingsRepository.getEngineSettings();
     const plan = generatePlan(req.body, engineSettings);
     const savedPlan = await repository.saveGeneratedPlan(req.currentUser?.id, plan);
 
+    if (!savedPlan?.persisted) {
+      const error = new Error(savedPlan?.reason || "Plan generation succeeded but saving failed.");
+      error.statusCode = 503;
+      throw error;
+    }
+
+    const planWithTechnologies = {
+      ...plan,
+      technologies: savedPlan?.technologies || [],
+    };
+
     res.status(200).json({
-      plan,
+      plan: planWithTechnologies,
       savedPlan,
     });
   } catch (error) {
@@ -40,7 +64,12 @@ router.get("/recent", async (req, res, next) => {
 
 router.get("/", async (req, res, next) => {
   try {
-    const plans = await repository.listUserPlans(req.currentUser?.id);
+    const limit = parseNonNegativeInteger(req.query.limit);
+    const offset = parseNonNegativeInteger(req.query.offset);
+    const plans = await repository.listUserPlans(req.currentUser?.id, {
+      limit,
+      offset,
+    });
 
     res.status(200).json({
       plans,

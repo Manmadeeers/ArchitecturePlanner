@@ -10,10 +10,15 @@ const ROADMAP_LABELS = {
 
 export function AdminPanel({
   adminAnalytics,
+  adminTechnologyCategories,
+  adminTechnologies,
   adminUsers,
+  onCreateTechnology,
+  onDeleteTechnology,
   currentUser,
   onDeleteUser,
   onSaveUserProfile,
+  onUpdateTechnology,
   engineSettingsDraft,
   engineSettingsRecord,
   error,
@@ -26,6 +31,8 @@ export function AdminPanel({
   onUpdateEngineRegionMultiplier,
   onUpdateRoadmapRule,
   roleUpdateInFlightId,
+  technologyDeleteInFlightId,
+  technologySaveInFlightId,
   userDeleteInFlightId,
   userSaveInFlightId,
 }) {
@@ -35,6 +42,14 @@ export function AdminPanel({
   const [editDraft, setEditDraft] = useState({
     displayName: "",
     email: "",
+  });
+  const [editingTechnologyId, setEditingTechnologyId] = useState(null);
+  const [technologyDraft, setTechnologyDraft] = useState({
+    name: "",
+    categoryId: "",
+    description: "",
+    logoUrl: "",
+    isActive: true,
   });
   const normalizedSearch = searchTerm.trim().toLowerCase();
   const filteredUsers = normalizedSearch
@@ -84,6 +99,51 @@ export function AdminPanel({
 
     if (wasDeleted && editingUserId === user.id) {
       cancelEditingUser();
+    }
+  }
+
+  function beginTechnologyEdit(technology) {
+    setEditingTechnologyId(technology.id);
+    setTechnologyDraft({
+      name: technology.name || "",
+      categoryId: technology.categoryId ? String(technology.categoryId) : "",
+      description: technology.description || "",
+      logoUrl: technology.logoUrl || "",
+      isActive: technology.isActive !== false,
+    });
+  }
+
+  function cancelTechnologyEdit() {
+    setEditingTechnologyId(null);
+    setTechnologyDraft({
+      name: "",
+      categoryId: "",
+      description: "",
+      logoUrl: "",
+      isActive: true,
+    });
+  }
+
+  async function saveTechnology(technologyId) {
+    const wasSaved = technologyId
+      ? await onUpdateTechnology(technologyId, technologyDraft)
+      : await onCreateTechnology(technologyDraft);
+
+    if (wasSaved) {
+      cancelTechnologyEdit();
+    }
+  }
+
+  async function removeTechnology(technology) {
+    const shouldDelete = window.confirm(`Delete technology "${technology.name}"?`);
+
+    if (!shouldDelete) {
+      return;
+    }
+
+    const wasDeleted = await onDeleteTechnology(technology.id);
+    if (wasDeleted && editingTechnologyId === technology.id) {
+      cancelTechnologyEdit();
     }
   }
 
@@ -339,6 +399,152 @@ export function AdminPanel({
           ) : (
             <div className="empty-state">
               <p>{t("admin.noUsersMatch")}</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="panel admin-settings-panel">
+        <div className="panel-heading">
+          <h2>Technology catalog</h2>
+          <p>Manage languages, frameworks, and tools used in generated implementation plans.</p>
+        </div>
+
+        <div className="button-row">
+          <button
+            type="button"
+            className="secondary-button"
+            onClick={() => {
+              if (editingTechnologyId === "new") {
+                cancelTechnologyEdit();
+                return;
+              }
+
+              setEditingTechnologyId("new");
+              setTechnologyDraft({
+                name: "",
+                categoryId: "",
+                description: "",
+                logoUrl: "",
+                isActive: true,
+              });
+            }}
+          >
+            {editingTechnologyId === "new" ? "Cancel new technology" : "Add technology"}
+          </button>
+        </div>
+
+        {editingTechnologyId ? (
+          <div className="questionnaire-form">
+            <fieldset className="fieldset admin-settings-section">
+              <legend>{editingTechnologyId === "new" ? "Create technology" : "Edit technology"}</legend>
+              <div className="profile-grid">
+                <label className="field">
+                  <span>Name</span>
+                  <input
+                    type="text"
+                    value={technologyDraft.name}
+                    onChange={(event) => setTechnologyDraft((current) => ({ ...current, name: event.target.value }))}
+                  />
+                </label>
+                <label className="field">
+                  <span>Category</span>
+                  <select
+                    value={technologyDraft.categoryId}
+                    onChange={(event) => setTechnologyDraft((current) => ({ ...current, categoryId: event.target.value }))}
+                  >
+                    <option value="">Select category</option>
+                    {(adminTechnologyCategories || []).map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="field">
+                  <span>Logo URL</span>
+                  <input
+                    type="url"
+                    value={technologyDraft.logoUrl}
+                    onChange={(event) => setTechnologyDraft((current) => ({ ...current, logoUrl: event.target.value }))}
+                  />
+                </label>
+                <label className="field">
+                  <span>Description</span>
+                  <input
+                    type="text"
+                    value={technologyDraft.description}
+                    onChange={(event) => setTechnologyDraft((current) => ({ ...current, description: event.target.value }))}
+                  />
+                </label>
+              </div>
+              <label className="toggle-field">
+                <div>
+                  <span>Active</span>
+                  <small>Inactive technologies stay in history but are not selected for new plans.</small>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={technologyDraft.isActive}
+                  onChange={(event) => setTechnologyDraft((current) => ({ ...current, isActive: event.target.checked }))}
+                />
+              </label>
+              <div className="button-row">
+                <button
+                  type="button"
+                  className="primary-button"
+                  disabled={Boolean(technologySaveInFlightId)}
+                  onClick={() => saveTechnology(editingTechnologyId === "new" ? null : editingTechnologyId)}
+                >
+                  {technologySaveInFlightId ? "Saving..." : "Save technology"}
+                </button>
+                <button type="button" className="secondary-button" onClick={cancelTechnologyEdit}>
+                  Cancel
+                </button>
+              </div>
+            </fieldset>
+          </div>
+        ) : null}
+
+        <div className="admin-user-grid">
+          {(adminTechnologies || []).length > 0 ? (
+            adminTechnologies.map((technology) => (
+              <article key={technology.id} className="narrative-card admin-user-card">
+                <div className="project-card-topline">
+                  <div>
+                    <strong>{technology.name}</strong>
+                    <div className="admin-user-meta">
+                      <span>{technology.categoryName || "Uncategorized"}</span>
+                      <span>{technology.isActive ? "Active" : "Inactive"}</span>
+                    </div>
+                  </div>
+                </div>
+                {technology.description ? <p>{technology.description}</p> : null}
+                {technology.logoUrl ? (
+                  <p className="muted-text">
+                    <a href={technology.logoUrl} target="_blank" rel="noreferrer">
+                      {technology.logoUrl}
+                    </a>
+                  </p>
+                ) : null}
+                <div className="button-row">
+                  <button type="button" className="secondary-button" onClick={() => beginTechnologyEdit(technology)}>
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    className="danger-button"
+                    disabled={technologyDeleteInFlightId === technology.id}
+                    onClick={() => removeTechnology(technology)}
+                  >
+                    {technologyDeleteInFlightId === technology.id ? "Deleting..." : "Delete"}
+                  </button>
+                </div>
+              </article>
+            ))
+          ) : (
+            <div className="empty-state">
+              <p>No technologies yet. Add your first catalog item above.</p>
             </div>
           )}
         </div>

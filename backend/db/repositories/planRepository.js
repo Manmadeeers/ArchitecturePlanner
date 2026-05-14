@@ -1,25 +1,29 @@
-const { and, desc, eq } = require("drizzle-orm");
+const { and, desc, eq, sql } = require("drizzle-orm");
 
 const { DEFAULT_DEVELOPMENT_PLAN } = require("../../engine/planEngine");
 const { getRegionProfile } = require("../../engine/regionCatalog");
 const { getDb } = require("../client");
-const { generatedPlans } = require("../schema");
+const { createTechnologyRepository } = require("./technologyRepository");
+const { planComponents, planRuns, projects } = require("../schema");
+
+const MAX_LIST_LIMIT = 100;
+const technologyRepository = createTechnologyRepository();
 
 function toPlanSummary(row) {
   return {
     id: row.id,
     planId: row.planId,
-    projectName: row.projectName,
+    projectName: row.projectNameSnapshot,
     summary: row.summary,
-    architectureStyle: row.recommendationPayload?.architectureStyle || null,
-    deploymentModel: row.recommendationPayload?.deploymentModel || null,
-    targetRegion: row.inputPayload?.targetRegion || null,
-    monthlyEstimate: row.costPayload?.monthlyEstimate || null,
+    architectureStyle: row.architectureStyle || row.recommendationPayload?.architectureStyle || null,
+    deploymentModel: row.deploymentModel || row.recommendationPayload?.deploymentModel || null,
+    targetRegion: row.targetRegion || row.inputPayload?.targetRegion || null,
+    monthlyEstimate: row.monthlyEstimate ?? row.costPayload?.monthlyEstimate ?? null,
     createdAt: row.createdAt,
   };
 }
 
-function toStoredPlan(row) {
+function toStoredPlan(row, technologies = []) {
   return {
     planId: row.planId,
     input: row.inputPayload,
@@ -32,7 +36,40 @@ function toStoredPlan(row) {
     generatedAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : row.createdAt,
     diagram: row.diagramPayload,
     drawioXml: row.drawioXml,
+    technologies,
   };
+}
+
+function normalizeListNumber(value) {
+  if (value === null || value === undefined || value === "") {
+    return null;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function normalizeProjectName(value) {
+  const normalized = String(value || "").trim();
+  return normalized || "Untitled project";
+}
+
+function extractMonthlyEstimate(plan) {
+  const monthlyEstimate = Number(plan?.cost?.monthlyEstimate);
+  return Number.isFinite(monthlyEstimate) ? Math.round(monthlyEstimate) : null;
+}
+
+function uniqueRecommendationComponents(plan) {
+  if (!Array.isArray(plan?.recommendation?.components)) {
+    return [];
+  }
+
+  return [...new Set(plan.recommendation.components.map(String).map((value) => value.trim()).filter(Boolean))];
 }
 
 function createPlanRepository() {
@@ -54,12 +91,31 @@ function createPlanRepository() {
         };
       }
 
-      const [row] = await db
-        .insert(generatedPlans)
+      const projectName = normalizeProjectName(plan?.input?.projectName);
+
+      const [projectRow] = await db
+        .insert(projects)
         .values({
           userId,
+          projectName,
+        })
+        .onConflictDoUpdate({
+          target: [projects.userId, projects.projectName],
+          set: {
+            updatedAt: new Date(),
+          },
+        })
+        .returning({
+          id: projects.id,
+        });
+
+      const [runRow] = await db
+        .insert(planRuns)
+        .values({
+          projectId: projectRow.id,
+          userId,
           planId: plan.planId,
-          projectName: plan.input.projectName,
+          projectNameSnapshot: projectName,
           inputPayload: plan.input,
           summary: plan.summary,
           recommendationPayload: plan.recommendation,
@@ -69,22 +125,46 @@ function createPlanRepository() {
           costPayload: plan.cost,
           diagramPayload: plan.diagram,
           drawioXml: plan.drawioXml,
+          architectureStyle: plan.recommendation?.architectureStyle || null,
+          deploymentModel: plan.recommendation?.deploymentModel || null,
+          targetRegion: plan.input?.targetRegion || null,
+          monthlyEstimate: extractMonthlyEstimate(plan),
         })
         .returning({
-          id: generatedPlans.id,
-          createdAt: generatedPlans.createdAt,
+          id: planRuns.id,
+          createdAt: planRuns.createdAt,
         });
+
+      const selectedTechnologies = await technologyRepository.selectTechnologiesForPlan(plan);
+      await technologyRepository.attachTechnologiesToPlanRun(runRow.id, selectedTechnologies);
+
+      const components = uniqueRecommendationComponents(plan);
+      if (components.length > 0) {
+        await db
+          .insert(planComponents)
+          .values(
+            components.map((componentCode) => ({
+              planRunId: runRow.id,
+              componentCode,
+            })),
+          )
+          .onConflictDoNothing();
+      }
 
       return {
         persisted: true,
-        id: row.id,
-        createdAt: row.createdAt,
+        id: runRow.id,
+        createdAt: runRow.createdAt,
+        technologies: selectedTechnologies,
       };
     },
 
     async listUserPlans(userId, options = {}) {
       const db = getDb();
-      const limit = Number.isFinite(options.limit) ? options.limit : null;
+      const parsedLimit = normalizeListNumber(options.limit);
+      const parsedOffset = normalizeListNumber(options.offset);
+      const limit = parsedLimit === null ? null : Math.min(parsedLimit, MAX_LIST_LIMIT);
+      const offset = parsedOffset || 0;
 
       if (!db || !userId) {
         return [];
@@ -92,20 +172,25 @@ function createPlanRepository() {
 
       let query = db
         .select({
-          id: generatedPlans.id,
-          planId: generatedPlans.planId,
-          projectName: generatedPlans.projectName,
-          summary: generatedPlans.summary,
-          inputPayload: generatedPlans.inputPayload,
-          recommendationPayload: generatedPlans.recommendationPayload,
-          costPayload: generatedPlans.costPayload,
-          createdAt: generatedPlans.createdAt,
+          id: planRuns.id,
+          planId: planRuns.planId,
+          projectNameSnapshot: planRuns.projectNameSnapshot,
+          summary: planRuns.summary,
+          inputPayload: planRuns.inputPayload,
+          recommendationPayload: planRuns.recommendationPayload,
+          costPayload: planRuns.costPayload,
+          architectureStyle: planRuns.architectureStyle,
+          deploymentModel: planRuns.deploymentModel,
+          targetRegion: planRuns.targetRegion,
+          monthlyEstimate: planRuns.monthlyEstimate,
+          createdAt: planRuns.createdAt,
         })
-        .from(generatedPlans)
-        .where(eq(generatedPlans.userId, userId))
-        .orderBy(desc(generatedPlans.createdAt));
+        .from(planRuns)
+        .where(eq(planRuns.userId, userId))
+        .orderBy(desc(planRuns.createdAt))
+        .offset(offset);
 
-      if (limit) {
+      if (limit !== null) {
         query = query.limit(limit);
       }
 
@@ -126,32 +211,33 @@ function createPlanRepository() {
 
       const [row] = await db
         .select({
-          id: generatedPlans.id,
-          planId: generatedPlans.planId,
-          projectName: generatedPlans.projectName,
-          inputPayload: generatedPlans.inputPayload,
-          summary: generatedPlans.summary,
-          recommendationPayload: generatedPlans.recommendationPayload,
-          regionProfilePayload: generatedPlans.regionProfilePayload,
-          roadmapPayload: generatedPlans.roadmapPayload,
-          developmentPlanPayload: generatedPlans.developmentPlanPayload,
-          costPayload: generatedPlans.costPayload,
-          diagramPayload: generatedPlans.diagramPayload,
-          drawioXml: generatedPlans.drawioXml,
-          createdAt: generatedPlans.createdAt,
+          id: planRuns.id,
+          planId: planRuns.planId,
+          inputPayload: planRuns.inputPayload,
+          summary: planRuns.summary,
+          recommendationPayload: planRuns.recommendationPayload,
+          regionProfilePayload: planRuns.regionProfilePayload,
+          roadmapPayload: planRuns.roadmapPayload,
+          developmentPlanPayload: planRuns.developmentPlanPayload,
+          costPayload: planRuns.costPayload,
+          diagramPayload: planRuns.diagramPayload,
+          drawioXml: planRuns.drawioXml,
+          createdAt: planRuns.createdAt,
         })
-        .from(generatedPlans)
-        .where(and(eq(generatedPlans.userId, userId), eq(generatedPlans.planId, planId)))
+        .from(planRuns)
+        .where(and(eq(planRuns.userId, userId), eq(planRuns.planId, planId)))
         .limit(1);
 
       if (!row) {
         return null;
       }
 
+      const technologiesByRunId = await technologyRepository.listTechnologiesForPlanRunIds([row.id]);
+
       return {
         id: row.id,
         createdAt: row.createdAt,
-        plan: toStoredPlan(row),
+        plan: toStoredPlan(row, technologiesByRunId.get(row.id) || []),
       };
     },
 
@@ -163,15 +249,35 @@ function createPlanRepository() {
       }
 
       const [row] = await db
-        .delete(generatedPlans)
-        .where(and(eq(generatedPlans.userId, userId), eq(generatedPlans.planId, planId)))
+        .delete(planRuns)
+        .where(and(eq(planRuns.userId, userId), eq(planRuns.planId, planId)))
         .returning({
-          id: generatedPlans.id,
-          planId: generatedPlans.planId,
-          projectName: generatedPlans.projectName,
+          id: planRuns.id,
+          planId: planRuns.planId,
+          projectId: planRuns.projectId,
+          projectNameSnapshot: planRuns.projectNameSnapshot,
         });
 
-      return row || null;
+      if (!row) {
+        return null;
+      }
+
+      const [remainingRuns] = await db
+        .select({
+          count: sql`count(*)`.mapWith(Number),
+        })
+        .from(planRuns)
+        .where(eq(planRuns.projectId, row.projectId));
+
+      if ((remainingRuns?.count || 0) === 0) {
+        await db.delete(projects).where(eq(projects.id, row.projectId));
+      }
+
+      return {
+        id: row.id,
+        planId: row.planId,
+        projectName: row.projectNameSnapshot,
+      };
     },
   };
 }

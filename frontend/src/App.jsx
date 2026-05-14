@@ -99,15 +99,22 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
       ) : planner.activeView === "admin" ? (
         <AdminPanel
           adminAnalytics={planner.adminAnalytics}
+          adminTechnologyCategories={planner.adminTechnologyCategories}
+          adminTechnologies={planner.adminTechnologies}
           adminUsers={planner.adminUsers}
+          onCreateTechnology={planner.createAdminTechnology}
+          onDeleteTechnology={planner.deleteAdminTechnology}
           currentUser={planner.currentUser}
           onDeleteUser={planner.deleteAdminUser}
           onSaveUserProfile={planner.saveAdminUserProfile}
+          onUpdateTechnology={planner.updateAdminTechnology}
           engineSettingsDraft={planner.engineSettingsDraft}
           engineSettingsRecord={planner.engineSettingsRecord}
           error={planner.error}
           isLoadingAdmin={planner.isLoadingAdmin}
           isSavingEngineSettings={planner.isSavingEngineSettings}
+          technologyDeleteInFlightId={planner.technologyDeleteInFlightId}
+          technologySaveInFlightId={planner.technologySaveInFlightId}
           onChangeUserRole={planner.changeAdminUserRole}
           onSaveEngineSettings={planner.saveEngineSettings}
           onUpdateEngineBaseCost={planner.updateEngineBaseCost}
