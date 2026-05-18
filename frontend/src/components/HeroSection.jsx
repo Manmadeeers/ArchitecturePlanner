@@ -58,7 +58,6 @@ export function HeroSection({
     <section className="hero">
       <div className="hero-topbar">
         <div className="hero-brand">
-          <p className="eyebrow">{t("hero.eyebrow")}</p>
           <div className="hero-brand-row">
             <h1>ArchitecturePlanner</h1>
             <span className="header-badge">
@@ -71,7 +70,6 @@ export function HeroSection({
                     : t("views.planner")}
             </span>
           </div>
-          <p className="hero-copy">{t("hero.copy")}</p>
         </div>
 
         <div className="toolbar-actions">
@@ -210,12 +208,6 @@ export function HeroSection({
         </div>
       ) : null}
 
-      {authMode === "configured" && !isAuthenticated && !isLoading ? (
-        <div className="info-box">
-          <strong>{t("hero.signInRequiredTitle")}</strong>
-          <span>{t("hero.signInRequiredBody")}</span>
-        </div>
-      ) : null}
     </section>
   );
 }

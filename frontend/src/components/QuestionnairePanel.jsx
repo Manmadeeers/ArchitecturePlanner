@@ -15,7 +15,6 @@ export function QuestionnairePanel({
     <section className="panel questionnaire-panel">
       <div className="panel-heading">
         <h2>{t("questionnaire.title")}</h2>
-        <p>{t("questionnaire.description")}</p>
       </div>
 
       <form onSubmit={handleSubmit} className="questionnaire-form">

@@ -18,7 +18,6 @@ export function ProjectsPage({
       <div className="panel projects-sidebar">
         <div className="panel-heading">
           <h2>{t("projects.title")}</h2>
-          <p>{t("projects.description")}</p>
         </div>
 
         {error ? <div className="error-box">{error}</div> : null}
@@ -84,7 +83,6 @@ export function ProjectsPage({
       <div className="panel project-detail-panel">
         <div className="panel-heading">
           <h2>{t("projects.detailTitle")}</h2>
-          <p>{t("projects.detailDescription")}</p>
         </div>
 
         {isLoadingSelectedProject ? (

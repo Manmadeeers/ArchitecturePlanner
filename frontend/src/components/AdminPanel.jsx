@@ -154,7 +154,6 @@ export function AdminPanel({
       <div className="panel admin-overview-panel">
         <div className="panel-heading">
           <h2>{t("admin.title")}</h2>
-          <p>{t("admin.description")}</p>
           <div className="button-row">
             <button type="button" className="secondary-button" onClick={onDownloadAdminReport} disabled={isDownloadingAdminReport}>
               {isDownloadingAdminReport ? "Generating PDF..." : "Download PDF report"}
@@ -264,7 +263,6 @@ export function AdminPanel({
       <div className="panel admin-users-panel">
         <div className="panel-heading">
           <h2>{t("admin.userManagement")}</h2>
-          <p>{t("admin.userManagementDescription")}</p>
         </div>
 
         <label className="field admin-search-field">
@@ -414,7 +412,6 @@ export function AdminPanel({
       <div className="panel admin-settings-panel">
         <div className="panel-heading">
           <h2>Technology catalog</h2>
-          <p>Manage languages, frameworks, and tools used in generated implementation plans.</p>
         </div>
 
         <div className="button-row">
@@ -560,7 +557,6 @@ export function AdminPanel({
       <div className="panel admin-settings-panel">
         <div className="panel-heading">
           <h2>{t("admin.engineSettings")}</h2>
-          <p>{t("admin.engineSettingsDescription")}</p>
         </div>
 
         {engineSettingsRecord?.updatedAt ? (

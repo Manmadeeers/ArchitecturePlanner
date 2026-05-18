@@ -7,7 +7,6 @@ export function ResultPanel({ error, planResponse }) {
     <section className="panel result-panel">
       <div className="panel-heading">
         <h2>{t("result.title")}</h2>
-        <p>{t("result.description")}</p>
       </div>
 
       {error ? <div className="error-box">{error}</div> : null}

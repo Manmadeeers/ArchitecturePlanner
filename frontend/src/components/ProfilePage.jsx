@@ -7,7 +7,6 @@ export function ProfilePage({ currentUser, user, onViewProjects, projectsCount, 
     <section className="panel view-panel">
       <div className="panel-heading">
         <h2>{t("profile.title")}</h2>
-        <p>{t("profile.description")}</p>
       </div>
 
       <div className="profile-grid">
@@ -51,7 +50,6 @@ export function ProfilePage({ currentUser, user, onViewProjects, projectsCount, 
       <div className="action-banner">
         <div>
           <strong>{t("profile.projectLibraryTitle")}</strong>
-          <p>{t("profile.projectLibraryBody")}</p>
         </div>
         <button type="button" className="primary-button" onClick={onViewProjects} disabled={isLoadingProjects}>
           {isLoadingProjects ? t("profile.loadingProjects") : t("profile.viewAllProjects")}
