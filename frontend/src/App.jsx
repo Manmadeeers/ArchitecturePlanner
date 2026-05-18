@@ -5,8 +5,7 @@ import { AdminPanel } from "./components/AdminPanel";
 import { HeroSection } from "./components/HeroSection";
 import { ProfilePage } from "./components/ProfilePage";
 import { ProjectsPage } from "./components/ProjectsPage";
-import { QuestionnairePanel } from "./components/QuestionnairePanel";
-import { ResultPanel } from "./components/ResultPanel";
+import { PlannerWorkspace } from "./components/PlannerWorkspace";
 import { usePlannerApp } from "./hooks/usePlannerApp";
 import { useI18n } from "./i18n";
 import { useThemePreference } from "./hooks/useThemePreference";
@@ -148,22 +147,7 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
           selectedProject={planner.selectedProject}
         />
       ) : (
-        <div className="layout">
-          <QuestionnairePanel
-            canGeneratePlan={planner.canGeneratePlan}
-            formValues={planner.formValues}
-            handleSubmit={planner.handleSubmit}
-            isLoadingPlan={planner.isLoadingPlan}
-            questionnaire={planner.questionnaire}
-            toggleFeature={planner.toggleFeature}
-            updateField={planner.updateField}
-          />
-
-          <ResultPanel
-            error={planner.error}
-            planResponse={planner.planResponse}
-          />
-        </div>
+        <PlannerWorkspace planner={planner} />
       )}
     </main>
   );

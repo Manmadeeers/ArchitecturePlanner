@@ -458,6 +458,49 @@ code {
   grid-template-columns: minmax(0, 1.02fr) minmax(0, 0.98fr);
 }
 
+.workspace-shell {
+  display: grid;
+  gap: 14px;
+}
+
+.workspace-tabs {
+  display: inline-flex;
+  gap: 8px;
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-subtle);
+  width: fit-content;
+}
+
+.workspace-tab {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: 8px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.workspace-tab-active {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border-soft);
+  box-shadow: 0 4px 10px rgba(15, 23, 42, 0.06);
+}
+
+.workspace-footer-hint {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px dashed var(--border-soft);
+  background: var(--bg-subtle);
+}
+
 .projects-layout {
   grid-template-columns: minmax(320px, 0.84fr) minmax(0, 1.16fr);
 }
@@ -534,6 +577,109 @@ code {
   display: grid;
   gap: 12px;
   margin-top: 14px;
+}
+
+.questionnaire-wizard {
+  display: grid;
+  gap: 12px;
+}
+
+.wizard-progress-block {
+  display: grid;
+  gap: 8px;
+}
+
+.wizard-progress-meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.wizard-progress-meta strong {
+  font-size: 0.86rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.wizard-progress-meta span {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.wizard-progress-track {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  overflow: hidden;
+}
+
+.wizard-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), #42a5ff);
+  border-radius: 999px;
+  transition: width 220ms ease;
+}
+
+.wizard-stepper {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wizard-step-chip {
+  border: 1px solid var(--border-soft);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  border-radius: 999px;
+  padding: 6px 11px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.wizard-step-chip-active {
+  border-color: var(--border-strong);
+  background: var(--bg-accent-soft);
+  color: var(--accent);
+}
+
+.wizard-form {
+  margin-top: 0;
+}
+
+.wizard-step-card {
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--bg-card);
+  display: grid;
+  gap: 12px;
+}
+
+.wizard-step-head {
+  display: grid;
+  gap: 4px;
+}
+
+.wizard-step-head h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.wizard-step-head p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.wizard-actions {
+  justify-content: flex-end;
+}
+
+.wizard-auth-hint small {
+  color: var(--text-muted);
 }
 
 .profile-grid {
@@ -815,7 +961,8 @@ code {
 .danger-button:disabled,
 .language-button:disabled,
 .menu-action-button:disabled,
-.project-card-surface:disabled {
+.project-card-surface:disabled,
+.workspace-tab:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
@@ -1008,6 +1155,11 @@ code {
   .summary-grid,
   .checkbox-grid {
     grid-template-columns: 1fr;
+  }
+
+  .workspace-footer-hint {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }
 
