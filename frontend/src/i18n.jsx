@@ -55,7 +55,7 @@ const messages = {
       authNotConfiguredBody:
         "Добавьте переменные окружения Auth0 из frontend/.env.example и backend/.env.example, чтобы включить регистрацию, вход и защищённые API-запросы.",
       signInRequiredTitle: "Чтобы генерировать и сохранять планы, нужно войти.",
-      signInRequiredBody: "Анкета остаётся доступной, но защищённые API-запросы будут работать только после входа через Auth0.",
+      signInRequiredBody: "Войдите или зарегистрируйтесь через Auth0, чтобы продолжить работу с приложением.",
     },
     questionnaire: {
       title: "Анкета проекта",
@@ -224,7 +224,7 @@ const messages = {
       authNotConfiguredBody:
         "Add the Auth0 environment variables from frontend/.env.example and backend/.env.example to enable registration, login, and protected API calls.",
       signInRequiredTitle: "Sign in is required to generate and save plans.",
-      signInRequiredBody: "The questionnaire stays visible, but protected API calls are unlocked only after Auth0 login.",
+      signInRequiredBody: "Log in or sign up with Auth0 to continue using the application.",
     },
     questionnaire: {
       title: "Project Questionnaire",
@@ -393,7 +393,7 @@ const messages = {
       authNotConfiguredBody:
         "Дадайце пераменныя асяроддзя Auth0 з frontend/.env.example і backend/.env.example, каб уключыць рэгістрацыю, уваход і абароненыя API-запыты.",
       signInRequiredTitle: "Каб генераваць і захоўваць планы, трэба ўвайсці.",
-      signInRequiredBody: "Анкета застаецца даступнай, але абароненыя API-запыты будуць працаваць толькі пасля ўваходу праз Auth0.",
+      signInRequiredBody: "Увайдзіце або зарэгіструйцеся праз Auth0, каб працягнуць працу з праграмай.",
     },
     questionnaire: {
       title: "Анкета праекта",

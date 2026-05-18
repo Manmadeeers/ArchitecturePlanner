@@ -184,24 +184,9 @@ export function HeroSection({
                   ) : (
                     <div className="menu-section">
                       <span className="menu-section-label">{t("common.authentication")}</span>
-                      <button
-                        type="button"
-                        className="menu-action-button"
-                        role="menuitem"
-                        onClick={handleMenuAction(onSignup)}
-                        disabled={isLoading}
-                      >
-                        {t("hero.signUp")}
-                      </button>
-                      <button
-                        type="button"
-                        className="menu-action-button menu-action-button-primary"
-                        role="menuitem"
-                        onClick={handleMenuAction(onLogin)}
-                        disabled={isLoading}
-                      >
-                        {isLoading ? t("hero.checkingSession") : t("hero.logIn")}
-                      </button>
+                      <div className="menu-status">
+                        {isLoading ? t("hero.checkingSession") : t("hero.signInRequiredBody")}
+                      </div>
                     </div>
                   )
                 ) : (

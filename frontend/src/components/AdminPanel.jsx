@@ -15,6 +15,7 @@ export function AdminPanel({
   adminUsers,
   onCreateTechnology,
   onDeleteTechnology,
+  onDownloadAdminReport,
   currentUser,
   onDeleteUser,
   onSaveUserProfile,
@@ -23,6 +24,7 @@ export function AdminPanel({
   engineSettingsRecord,
   error,
   isLoadingAdmin,
+  isDownloadingAdminReport,
   isSavingEngineSettings,
   onChangeUserRole,
   onSaveEngineSettings,
@@ -153,6 +155,11 @@ export function AdminPanel({
         <div className="panel-heading">
           <h2>{t("admin.title")}</h2>
           <p>{t("admin.description")}</p>
+          <div className="button-row">
+            <button type="button" className="secondary-button" onClick={onDownloadAdminReport} disabled={isDownloadingAdminReport}>
+              {isDownloadingAdminReport ? "Generating PDF..." : "Download PDF report"}
+            </button>
+          </div>
         </div>
 
         {error ? <div className="error-box">{error}</div> : null}

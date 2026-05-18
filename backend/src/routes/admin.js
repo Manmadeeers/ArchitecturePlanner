@@ -1,12 +1,15 @@
 const { Router } = require("express");
 
 const { createAnalyticsRepository } = require("../../db/repositories/analyticsRepository");
+const { createAdminAuditRepository } = require("../../db/repositories/adminAuditRepository");
 const { createEngineSettingsRepository } = require("../../db/repositories/engineSettingsRepository");
 const { createTechnologyRepository } = require("../../db/repositories/technologyRepository");
 const { createUserRepository } = require("../../db/repositories/userRepository");
+const { generateAdminAnalyticsPdf } = require("../services/adminAnalyticsPdf");
 const { attachCurrentUser, requireAdmin, requireAuth } = require("../auth");
 
 const router = Router();
+const adminAuditRepository = createAdminAuditRepository();
 const analyticsRepository = createAnalyticsRepository();
 const engineSettingsRepository = createEngineSettingsRepository();
 const technologyRepository = createTechnologyRepository();
@@ -109,6 +112,35 @@ router.get("/analytics/overview", async (req, res, next) => {
     const overview = await analyticsRepository.getOverview();
 
     res.status(200).json(overview);
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.get("/reports/analytics.pdf", async (req, res, next) => {
+  try {
+    const overview = await analyticsRepository.getOverview();
+    const pdfBuffer = generateAdminAnalyticsPdf({
+      overview,
+      generatedAt: new Date(),
+      generatedBy: req.currentUser || null,
+    });
+    const fileDate = new Date().toISOString().slice(0, 10);
+
+    await adminAuditRepository.logAction({
+      actorUserId: req.currentUser?.id || null,
+      action: "Admin downloaded analytics PDF report",
+      targetType: "analytics_report",
+      targetId: fileDate,
+      details: {
+        totalPlans: overview?.totals?.totalPlans || 0,
+      },
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename=\"analytics-report-${fileDate}.pdf\"`);
+    res.setHeader("Cache-Control", "no-store");
+    res.status(200).send(pdfBuffer);
   } catch (error) {
     next(error);
   }

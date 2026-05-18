@@ -151,18 +151,9 @@ docker compose up --build
 
 The compose file:
 
-- builds PostgreSQL from `db/Dockerfile` and initializes schema from `backend/db/schema.sql`
+- builds PostgreSQL from `db/Dockerfile` and applies `backend/db/schema.sql` at every database container startup (idempotent: existing data is preserved)
 - runs the backend against the `db` service over the internal Docker network
 - exposes Nginx on ports `80` and `20532`
-
-If you already have an existing Postgres volume from an older version of the project, init scripts will not rerun automatically. Apply upgrade SQL manually from:
-
-- `backend/db/migrations/001_link_generated_plans_to_users.sql`
-- `backend/db/migrations/002_store_full_plan_payloads.sql`
-- `backend/db/migrations/003_add_admin_tables.sql`
-- `backend/db/migrations/004_normalize_plan_storage.sql`
-- `backend/db/migrations/005_add_technology_catalog.sql`
-- `backend/db/migrations/006_add_technology_categories.sql`
 
 ## Database setup
 

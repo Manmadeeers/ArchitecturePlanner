@@ -8,6 +8,7 @@ import { ProjectsPage } from "./components/ProjectsPage";
 import { QuestionnairePanel } from "./components/QuestionnairePanel";
 import { ResultPanel } from "./components/ResultPanel";
 import { usePlannerApp } from "./hooks/usePlannerApp";
+import { useI18n } from "./i18n";
 import { useThemePreference } from "./hooks/useThemePreference";
 
 export default function App() {
@@ -59,6 +60,7 @@ function UnauthenticatedApp() {
 }
 
 function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onLogin, onLogout, onSignup, user }) {
+  const { t } = useI18n();
   const { theme, toggleTheme } = useThemePreference();
   const planner = usePlannerApp({
     authMode,
@@ -88,7 +90,14 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
         user={user}
       />
 
-      {planner.activeView === "profile" ? (
+      {authMode === "configured" && !isAuthenticated ? (
+        <AuthRequiredPanel
+          isLoading={isLoading}
+          onLogin={onLogin}
+          onSignup={onSignup}
+          t={t}
+        />
+      ) : planner.activeView === "profile" ? (
         <ProfilePage
           currentUser={planner.currentUser}
           isLoadingProjects={planner.isLoadingProjects}
@@ -111,8 +120,10 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
           engineSettingsDraft={planner.engineSettingsDraft}
           engineSettingsRecord={planner.engineSettingsRecord}
           error={planner.error}
+          isDownloadingAdminReport={planner.isDownloadingAdminReport}
           isLoadingAdmin={planner.isLoadingAdmin}
           isSavingEngineSettings={planner.isSavingEngineSettings}
+          onDownloadAdminReport={planner.downloadAdminAnalyticsReport}
           technologyDeleteInFlightId={planner.technologyDeleteInFlightId}
           technologySaveInFlightId={planner.technologySaveInFlightId}
           onChangeUserRole={planner.changeAdminUserRole}
@@ -155,5 +166,34 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
         </div>
       )}
     </main>
+  );
+}
+
+function AuthRequiredPanel({ isLoading, onLogin, onSignup, t }) {
+  return (
+    <section className="panel auth-gate-panel">
+      <div className="panel-heading">
+        <h2>{t("hero.signInRequiredTitle")}</h2>
+        <p>{t("hero.signInRequiredBody")}</p>
+      </div>
+      <div className="button-row">
+        <button
+          type="button"
+          className="secondary-button"
+          onClick={onSignup}
+          disabled={isLoading}
+        >
+          {t("hero.signUp")}
+        </button>
+        <button
+          type="button"
+          className="primary-button"
+          onClick={onLogin}
+          disabled={isLoading}
+        >
+          {isLoading ? t("hero.checkingSession") : t("hero.logIn")}
+        </button>
+      </div>
+    </section>
   );
 }

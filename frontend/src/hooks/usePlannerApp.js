@@ -19,6 +19,15 @@ function normalizeProfileField(value) {
   return normalizedValue ? normalizedValue : null;
 }
 
+function getDownloadFileNameFromDisposition(dispositionHeader, fallbackName) {
+  if (!dispositionHeader) {
+    return fallbackName;
+  }
+
+  const match = dispositionHeader.match(/filename="?([^"]+)"?/i);
+  return match?.[1] || fallbackName;
+}
+
 export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthenticated, isLoading }) {
   const { t } = useI18n();
   const [activeView, setActiveView] = useState("planner");
@@ -40,6 +49,7 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [isLoadingSelectedProject, setIsLoadingSelectedProject] = useState(false);
   const [isLoadingAdmin, setIsLoadingAdmin] = useState(false);
+  const [isDownloadingAdminReport, setIsDownloadingAdminReport] = useState(false);
   const [isSavingEngineSettings, setIsSavingEngineSettings] = useState(false);
   const [projectDeleteInFlightId, setProjectDeleteInFlightId] = useState(null);
   const [roleUpdateInFlightId, setRoleUpdateInFlightId] = useState(null);
@@ -224,6 +234,49 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
   async function loadEngineSettings(token) {
     const { data } = await fetchJson("/admin/settings/engine", { token });
     return data;
+  }
+
+  async function downloadAdminAnalyticsReport() {
+    if (!isAdmin || !getAccessToken) {
+      setError(t("errors.adminAccess"));
+      return false;
+    }
+
+    setIsDownloadingAdminReport(true);
+    setError("");
+
+    try {
+      const token = await getAccessToken();
+      const response = await fetch(`${API_BASE_URL}/admin/reports/analytics.pdf`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => null);
+        const message = Array.isArray(data?.details) ? data.details.join(", ") : data?.error || "Failed to generate PDF report.";
+        throw new Error(message);
+      }
+
+      const blob = await response.blob();
+      const fileName = getDownloadFileNameFromDisposition(
+        response.headers.get("content-disposition"),
+        `analytics-report-${new Date().toISOString().slice(0, 10)}.pdf`,
+      );
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      URL.revokeObjectURL(url);
+      return true;
+    } catch (downloadError) {
+      setError(downloadError.message);
+      return false;
+    } finally {
+      setIsDownloadingAdminReport(false);
+    }
   }
 
   function showPlannerView() {
@@ -662,6 +715,7 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
     isAdmin,
     isAuthReady,
     isLoadingAdmin,
+    isDownloadingAdminReport,
     isLoadingPlan,
     isLoadingProfile,
     isLoadingProjects,
@@ -682,6 +736,7 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
     selectedProject,
     selectProject,
     showAdminView,
+    downloadAdminAnalyticsReport,
     showPlannerView,
     showProfileView,
     showProjectsView,

@@ -461,6 +461,11 @@ code {
   backdrop-filter: blur(16px);
 }
 
+.auth-gate-panel {
+  display: grid;
+  gap: 18px;
+}
+
 .questionnaire-panel,
 .result-panel,
 .projects-sidebar,

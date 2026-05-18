@@ -7,23 +7,24 @@ create table if not exists users (
   created_at timestamptz not null default now()
 );
 
--- Legacy table kept for compatibility with older backups and migrations.
-create table if not exists generated_plans (
-  id bigserial primary key,
-  user_id bigint references users(id) on delete cascade,
-  plan_id text not null unique,
-  project_name text not null,
-  input_payload jsonb not null,
-  summary text not null,
-  recommendation_payload jsonb not null,
-  region_profile_payload jsonb,
-  roadmap_payload jsonb not null,
-  development_plan_payload jsonb,
-  cost_payload jsonb not null,
-  diagram_payload jsonb not null,
-  drawio_xml text not null,
-  created_at timestamptz not null default now()
-);
+update users
+set role = 'user'
+where role is null or role not in ('user', 'admin');
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'users_role_check'
+      and conrelid = 'users'::regclass
+  ) then
+    alter table users
+      add constraint users_role_check check (role in ('user', 'admin'));
+  end if;
+end $$;
+
+drop table if exists generated_plans cascade;
 
 create table if not exists projects (
   id bigserial primary key,
@@ -121,9 +122,6 @@ create table if not exists admin_audit_log (
   created_at timestamptz not null default now()
 );
 
-create index if not exists idx_generated_plans_created_at on generated_plans (created_at desc);
-create index if not exists idx_generated_plans_user_created_at on generated_plans (user_id, created_at desc);
-
 create index if not exists idx_projects_user_created_at on projects (user_id, created_at desc);
 
 create index if not exists idx_plan_runs_created_at on plan_runs (created_at desc);
@@ -137,7 +135,20 @@ create index if not exists idx_plan_components_plan_run_id on plan_components (p
 create index if not exists idx_plan_components_component_code on plan_components (component_code);
 
 create index if not exists idx_technology_categories_sort_active on technology_categories (sort_order, is_active);
-create index if not exists idx_technologies_category_active on technologies (category_id, is_active);
+
+do $$
+begin
+  if exists (
+    select 1
+    from pg_indexes
+    where schemaname = 'public'
+      and indexname = 'idx_technologies_category_active'
+      and indexdef not ilike '%(category_id, is_active)%'
+  ) then
+    drop index if exists idx_technologies_category_active;
+  end if;
+end $$;
+
 create index if not exists idx_plan_run_technologies_plan_run_id on plan_run_technologies (plan_run_id);
 create index if not exists idx_plan_run_technologies_technology_id on plan_run_technologies (technology_id);
 
@@ -156,6 +167,67 @@ values
   ('devops', 'DevOps', 110, true),
   ('other', 'Other', 999, true)
 on conflict (code) do nothing;
+
+alter table if exists technologies
+  add column if not exists category_id bigint;
+
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'technologies'
+      and column_name = 'category'
+  ) then
+    update technologies technology
+    set category_id = category.id
+    from technology_categories category
+    where technology.category_id is null
+      and lower(trim(technology.category)) = category.code;
+  end if;
+end $$;
+
+update technologies
+set category_id = (
+  select id
+  from technology_categories
+  where code = 'other'
+)
+where category_id is null;
+
+do $$
+begin
+  if not exists (
+    select 1
+    from pg_constraint
+    where conname = 'technologies_category_id_fkey'
+      and conrelid = 'technologies'::regclass
+  ) then
+    alter table technologies
+      add constraint technologies_category_id_fkey
+      foreign key (category_id)
+      references technology_categories(id)
+      on delete restrict;
+  end if;
+end $$;
+
+alter table technologies
+  alter column category_id set not null;
+
+create index if not exists idx_technologies_category_active on technologies (category_id, is_active);
+
+alter table if exists region_data_cache
+  add column if not exists expires_at timestamptz;
+
+delete from region_data_cache older
+using region_data_cache newer
+where older.region_code = newer.region_code
+  and older.source_name = newer.source_name
+  and (
+    older.refreshed_at < newer.refreshed_at
+    or (older.refreshed_at = newer.refreshed_at and older.id < newer.id)
+  );
 
 create unique index if not exists uq_region_data_cache_region_source on region_data_cache (region_code, source_name);
 create index if not exists idx_region_data_cache_region_code on region_data_cache (region_code);
