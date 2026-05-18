@@ -20,7 +20,17 @@ const questionnaire = [
     label: "Business type",
     type: "select",
     required: true,
-    options: ["saas", "e-commerce", "marketplace", "social-platform", "internal-system", "content-platform"],
+    options: [
+      "saas",
+      "e-commerce",
+      "marketplace",
+      "social-platform",
+      "internal-system",
+      "content-platform",
+      "fintech",
+      "healthcare",
+      "edtech",
+    ],
     helpText: "Different products map to different architectural patterns.",
   },
   {
@@ -36,7 +46,7 @@ const questionnaire = [
     label: "Deployment preference",
     type: "select",
     required: true,
-    options: ["cloud", "on-premise", "hybrid", "no-preference"],
+    options: ["managed-cloud", "self-managed-cloud", "hybrid", "on-premise"],
     helpText: "Guides hosting and managed-service recommendations.",
   },
   {
@@ -60,7 +70,14 @@ const questionnaire = [
     label: "Application type",
     type: "select",
     required: true,
-    options: ["web-app", "mobile-backend", "api-platform", "web-and-mobile"],
+    options: [
+      "web-app",
+      "mobile-app",
+      "integrated-system",
+      "dbms-platform",
+      "api-platform",
+      "iot-platform",
+    ],
     helpText: "Defines how many delivery surfaces the system should support.",
   },
   {

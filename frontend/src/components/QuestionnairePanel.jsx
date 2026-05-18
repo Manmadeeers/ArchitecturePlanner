@@ -6,26 +6,18 @@ import { useI18n } from "../i18n";
 const QUESTION_STEPS = [
   {
     id: "scope",
-    title: "Project scope",
-    description: "Define product type and launch constraints.",
     fields: ["projectName", "projectStage", "businessType", "applicationType", "needFastDelivery"],
   },
   {
     id: "scale",
-    title: "Scale and budget",
-    description: "Set expected traffic, budget, and growth profile.",
     fields: ["monthlyUsers", "monthlyBudget", "expectedGrowth", "targetRegion", "deploymentPreference"],
   },
   {
     id: "product",
-    title: "Capabilities",
-    description: "Choose the core feature set and realtime needs.",
     fields: ["coreFeatures", "realtimeFeatures"],
   },
   {
     id: "operations",
-    title: "Operations profile",
-    description: "Adjust reliability, data sensitivity, and team level.",
     fields: ["dataSensitivity", "availabilityRequirement", "teamTechnicalLevel"],
   },
 ];
@@ -47,9 +39,11 @@ export function QuestionnairePanel({
 
     return QUESTION_STEPS.map((step) => ({
       ...step,
+      title: t(`questionnaire.steps.${step.id}.title`),
+      description: t(`questionnaire.steps.${step.id}.description`),
       fields: step.fields.map((fieldId) => questionMap.get(fieldId)).filter(Boolean),
     })).filter((step) => step.fields.length > 0);
-  }, [questionnaire]);
+  }, [questionnaire, t]);
 
   useEffect(() => {
     if (steps.length === 0) {
@@ -84,7 +78,10 @@ export function QuestionnairePanel({
       <div className="wizard-progress-block">
         <div className="wizard-progress-meta">
           <strong>
-            Step {activeStepIndex + 1}/{steps.length}
+            {t("questionnaire.stepProgress", {
+              current: activeStepIndex + 1,
+              total: steps.length,
+            })}
           </strong>
           <span>{activeStep.title}</span>
         </div>
@@ -131,7 +128,7 @@ export function QuestionnairePanel({
             disabled={activeStepIndex === 0}
             onClick={() => setActiveStepIndex((current) => Math.max(0, current - 1))}
           >
-            Back
+            {t("questionnaire.back")}
           </button>
           {isLastStep ? (
             <button type="submit" className="primary-button" disabled={!canGeneratePlan || isLoadingPlan}>
@@ -143,14 +140,14 @@ export function QuestionnairePanel({
               className="primary-button"
               onClick={() => setActiveStepIndex((current) => Math.min(steps.length - 1, current + 1))}
             >
-              Continue
+              {t("questionnaire.continue")}
             </button>
           )}
         </div>
       </form>
       {!canGeneratePlan ? (
         <div className="wizard-auth-hint">
-          <small>Sign in to generate and save your plan.</small>
+          <small>{t("questionnaire.signInHint")}</small>
         </div>
       ) : null}
     </section>

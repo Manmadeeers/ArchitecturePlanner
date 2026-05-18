@@ -53,11 +53,12 @@ function createEdge({
 
 function buildDiagram(plan) {
   const dataModuleLines = buildDataModuleLines(plan);
+  const clientShellLabel = getClientShellLabel(plan.input.applicationType);
 
   const nodes = [
     createNode({
       id: "client-shell",
-      label: plan.input.applicationType === "web-and-mobile" ? "Web + Mobile Clients" : "Client Application",
+      label: clientShellLabel,
       role: "container",
       shape: "cube",
       width: 320,
@@ -256,12 +257,40 @@ function buildClientModuleLines(plan) {
   switch (plan.input.applicationType) {
     case "web-and-mobile":
       return ["React Frontend", "Web + Mobile Clients"];
+    case "mobile-app":
     case "mobile-backend":
+    case "native-mobile-app":
+    case "cross-platform-mobile":
       return ["Mobile Client Support", "API Integration"];
     case "api-platform":
       return ["API Consumer Layer", "Partner / Internal Clients"];
+    case "integrated-system":
+      return ["API Consumer Layer", "Integrated Systems"];
+    case "dbms-platform":
+      return ["API Consumer Layer", "Admin / Data Clients"];
+    case "iot-platform":
+      return ["API Consumer Layer", "IoT Devices / Gateways"];
     default:
       return ["React Frontend", "JavaScript"];
+  }
+}
+
+function getClientShellLabel(applicationType) {
+  switch (applicationType) {
+    case "web-and-mobile":
+      return "Web + Mobile Clients";
+    case "mobile-app":
+    case "mobile-backend":
+    case "native-mobile-app":
+    case "cross-platform-mobile":
+      return "Mobile Clients";
+    case "api-platform":
+    case "integrated-system":
+    case "dbms-platform":
+    case "iot-platform":
+      return "API / System Clients";
+    default:
+      return "Client Application";
   }
 }
 

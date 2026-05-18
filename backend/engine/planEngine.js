@@ -24,16 +24,40 @@ const DEFAULT_DEVELOPMENT_PLAN = [
   },
 ];
 
+function normalizeApplicationType(value) {
+  const normalized = String(value || "web-app");
+
+  const legacyMap = {
+    "web-and-mobile": "web-app",
+    "mobile-backend": "mobile-app",
+    "native-mobile-app": "mobile-app",
+    "cross-platform-mobile": "mobile-app",
+  };
+
+  return legacyMap[normalized] || normalized;
+}
+
+function normalizeDeploymentPreference(value) {
+  const normalized = String(value || "managed-cloud");
+
+  const legacyMap = {
+    cloud: "managed-cloud",
+    "no-preference": "managed-cloud",
+  };
+
+  return legacyMap[normalized] || normalized;
+}
+
 function normalizeInput(raw = {}) {
   return {
     projectName: String(raw.projectName || "").trim(),
     projectStage: String(raw.projectStage || "idea"),
     businessType: String(raw.businessType || "saas"),
     targetRegion: String(raw.targetRegion || "north-america"),
-    deploymentPreference: String(raw.deploymentPreference || "cloud"),
+    deploymentPreference: normalizeDeploymentPreference(raw.deploymentPreference),
     monthlyUsers: Number(raw.monthlyUsers || 0),
     monthlyBudget: Number(raw.monthlyBudget || 0),
-    applicationType: String(raw.applicationType || "web-app"),
+    applicationType: normalizeApplicationType(raw.applicationType),
     coreFeatures: Array.isArray(raw.coreFeatures) ? raw.coreFeatures.map(String) : [],
     realtimeFeatures: Boolean(raw.realtimeFeatures),
     dataSensitivity: String(raw.dataSensitivity || "low"),
@@ -88,12 +112,21 @@ function validateInput(input) {
 }
 
 function buildBaseComponents(input, recommendation) {
-  const frontendComponent =
-    input.applicationType === "mobile-backend"
-      ? ["mobile-client-support"]
-      : input.applicationType === "api-platform"
-        ? ["api-consumer-layer"]
-        : ["react-frontend"];
+  const frontendComponent = (() => {
+    switch (input.applicationType) {
+      case "mobile-app":
+        return ["mobile-client-support"];
+      case "dbms-platform":
+        return ["api-consumer-layer", "admin-ui"];
+      case "api-platform":
+      case "integrated-system":
+      case "iot-platform":
+        return ["api-consumer-layer"];
+      case "web-app":
+      default:
+        return ["react-frontend"];
+    }
+  })();
 
   const architectureComponents = {
     monolith: ["nginx", "nodejs-express-api", "postgresql"],

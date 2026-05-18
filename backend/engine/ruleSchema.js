@@ -34,10 +34,10 @@ const rules = {
     {
       id: "D1",
       when: {
-        deploymentPreference: { eq: "cloud" },
+        deploymentPreference: { eq: "managed-cloud" },
       },
       then: {
-        deploymentModel: "cloud",
+        deploymentModel: "managed-cloud",
       },
     },
     {
@@ -62,11 +62,11 @@ const rules = {
     {
       id: "D4",
       when: {
-        deploymentPreference: { eq: "no-preference" },
-        teamTechnicalLevel: { eq: "low" },
+        deploymentPreference: { eq: "self-managed-cloud" },
       },
       then: {
-        deploymentModel: "managed-cloud",
+        deploymentModel: "cloud",
+        preferences: ["greater infrastructure control", "provider portability"],
       },
     },
     {

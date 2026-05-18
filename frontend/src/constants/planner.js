@@ -3,7 +3,7 @@ export const defaultValues = {
   projectStage: "idea",
   businessType: "saas",
   targetRegion: "north-america",
-  deploymentPreference: "cloud",
+  deploymentPreference: "managed-cloud",
   monthlyUsers: 500,
   monthlyBudget: 150,
   applicationType: "web-app",

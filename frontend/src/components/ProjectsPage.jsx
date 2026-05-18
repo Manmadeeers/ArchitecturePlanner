@@ -10,6 +10,7 @@ export function ProjectsPage({
   projectDeleteInFlightId,
   projects,
   selectedProject,
+  onRequestConfirm,
 }) {
   const { formatCurrency, formatDate, getProjectSummary, getValueLabel, t } = useI18n();
 
@@ -34,15 +35,20 @@ export function ProjectsPage({
 
               function handleDeleteProject() {
                 const projectName = project.projectName || t("common.notProvided");
-                const shouldDelete = window.confirm(
-                  t("projects.deleteConfirm", {
+                onRequestConfirm({
+                  title: t("projects.delete"),
+                  message: t("projects.deleteConfirm", {
                     name: projectName,
-                  })
-                );
+                  }),
+                  confirmLabel: t("projects.delete"),
+                  cancelLabel: t("common.cancel"),
+                }).then((shouldDelete) => {
+                  if (!shouldDelete) {
+                    return;
+                  }
 
-                if (shouldDelete) {
                   onDeleteProject(project.planId);
-                }
+                });
               }
 
               return (

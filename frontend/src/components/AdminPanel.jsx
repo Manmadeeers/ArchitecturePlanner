@@ -37,6 +37,7 @@ export function AdminPanel({
   technologySaveInFlightId,
   userDeleteInFlightId,
   userSaveInFlightId,
+  onRequestConfirm,
 }) {
   const { formatCurrency, formatDate, formatDateTime, getComponentLabel, getRoleLabel, getValueLabel, t, translateFixedText } = useI18n();
   const [searchTerm, setSearchTerm] = useState("");
@@ -87,11 +88,14 @@ export function AdminPanel({
   }
 
   async function deleteUser(user) {
-    const shouldDelete = window.confirm(
-      t("admin.deleteConfirm", {
+    const shouldDelete = await onRequestConfirm({
+      title: t("admin.deleteUser"),
+      message: t("admin.deleteConfirm", {
         name: user.displayName || user.email || user.auth0Sub,
-      })
-    );
+      }),
+      confirmLabel: t("admin.deleteUser"),
+      cancelLabel: t("common.cancel"),
+    });
 
     if (!shouldDelete) {
       return;
@@ -137,7 +141,12 @@ export function AdminPanel({
   }
 
   async function removeTechnology(technology) {
-    const shouldDelete = window.confirm(`Delete technology "${technology.name}"?`);
+    const shouldDelete = await onRequestConfirm({
+      title: t("admin.deleteTechnology"),
+      message: t("admin.deleteTechnologyConfirm", { name: technology.name }),
+      confirmLabel: t("common.delete"),
+      cancelLabel: t("common.cancel"),
+    });
 
     if (!shouldDelete) {
       return;

@@ -39,7 +39,7 @@ export function PlannerWorkspace({ planner }) {
 
   return (
     <section className="workspace-shell">
-      <div className="workspace-tabs" role="tablist" aria-label="Planner workspace">
+      <div className="workspace-tabs" role="tablist" aria-label={t("workspace.tabsAria")}>
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -71,9 +71,9 @@ export function PlannerWorkspace({ planner }) {
 
       {activeTab === WORKSPACE_TABS.build && canOpenResult ? (
         <div className="workspace-footer-hint">
-          <span>{t("result.title")} is ready.</span>
+          <span>{t("workspace.resultReady")}</span>
           <button type="button" className="secondary-button" onClick={() => setActiveTab(WORKSPACE_TABS.result)}>
-            Open result
+            {t("workspace.openResult")}
           </button>
         </div>
       ) : null}

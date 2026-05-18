@@ -1,7 +1,9 @@
+import { useCallback, useEffect, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 
 import { auth0Config, isAuthConfigured } from "./auth-config";
 import { AdminPanel } from "./components/AdminPanel";
+import { ConfirmDialog } from "./components/ConfirmDialog";
 import { HeroSection } from "./components/HeroSection";
 import { ProfilePage } from "./components/ProfilePage";
 import { ProjectsPage } from "./components/ProjectsPage";
@@ -61,6 +63,14 @@ function UnauthenticatedApp() {
 function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onLogin, onLogout, onSignup, user }) {
   const { t } = useI18n();
   const { theme, toggleTheme } = useThemePreference();
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: "",
+    message: "",
+    confirmLabel: "",
+    cancelLabel: t("common.cancel"),
+    resolve: null,
+  });
   const planner = usePlannerApp({
     authMode,
     authUser: user,
@@ -68,6 +78,56 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
     isAuthenticated,
     isLoading,
   });
+
+  const requestConfirm = useCallback(
+    ({ cancelLabel, confirmLabel, message, title }) =>
+      new Promise((resolve) => {
+        setConfirmDialog({
+          isOpen: true,
+          title,
+          message,
+          confirmLabel,
+          cancelLabel: cancelLabel || t("common.cancel"),
+          resolve,
+        });
+      }),
+    [t]
+  );
+
+  const closeConfirmDialog = useCallback(
+    (result) => {
+      setConfirmDialog((current) => {
+        if (typeof current.resolve === "function") {
+          current.resolve(result);
+        }
+
+        return {
+          isOpen: false,
+          title: "",
+          message: "",
+          confirmLabel: "",
+          cancelLabel: t("common.cancel"),
+          resolve: null,
+        };
+      });
+    },
+    [t]
+  );
+
+  useEffect(() => {
+    if (!confirmDialog.isOpen) {
+      return undefined;
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        closeConfirmDialog(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => window.removeEventListener("keydown", handleEscape);
+  }, [closeConfirmDialog, confirmDialog.isOpen]);
 
   return (
     <main className="page-shell">
@@ -134,6 +194,7 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
           userDeleteInFlightId={planner.userDeleteInFlightId}
           userSaveInFlightId={planner.userSaveInFlightId}
           roleUpdateInFlightId={planner.roleUpdateInFlightId}
+          onRequestConfirm={requestConfirm}
         />
       ) : planner.activeView === "projects" ? (
         <ProjectsPage
@@ -145,10 +206,21 @@ function PlannerPage({ authMode, getAccessToken, isAuthenticated, isLoading, onL
           projectDeleteInFlightId={planner.projectDeleteInFlightId}
           projects={planner.projects}
           selectedProject={planner.selectedProject}
+          onRequestConfirm={requestConfirm}
         />
       ) : (
         <PlannerWorkspace planner={planner} />
       )}
+
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        confirmLabel={confirmDialog.confirmLabel}
+        cancelLabel={confirmDialog.cancelLabel}
+        onCancel={() => closeConfirmDialog(false)}
+        onConfirm={() => closeConfirmDialog(true)}
+      />
     </main>
   );
 }

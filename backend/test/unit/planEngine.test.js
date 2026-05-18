@@ -10,7 +10,7 @@ function createValidInput(overrides = {}) {
     projectStage: "idea",
     businessType: "saas",
     targetRegion: "north-america",
-    deploymentPreference: "cloud",
+    deploymentPreference: "managed-cloud",
     monthlyUsers: 800,
     monthlyBudget: 300,
     applicationType: "web-app",
@@ -41,6 +41,24 @@ test("normalizeInput trims text and coerces primitive types", () => {
   assert.equal(normalized.realtimeFeatures, true);
   assert.equal(normalized.needFastDelivery, false);
   assert.deepEqual(normalized.coreFeatures, ["authentication", "42"]);
+});
+
+test("normalizeInput maps legacy application types to grouped values", () => {
+  const webAndMobile = normalizeInput({ applicationType: "web-and-mobile" });
+  const mobileBackend = normalizeInput({ applicationType: "mobile-backend" });
+  const nativeMobile = normalizeInput({ applicationType: "native-mobile-app" });
+
+  assert.equal(webAndMobile.applicationType, "web-app");
+  assert.equal(mobileBackend.applicationType, "mobile-app");
+  assert.equal(nativeMobile.applicationType, "mobile-app");
+});
+
+test("normalizeInput maps legacy deployment preferences to supported values", () => {
+  const cloud = normalizeInput({ deploymentPreference: "cloud" });
+  const noPreference = normalizeInput({ deploymentPreference: "no-preference" });
+
+  assert.equal(cloud.deploymentPreference, "managed-cloud");
+  assert.equal(noPreference.deploymentPreference, "managed-cloud");
 });
 
 test("validateInput throws 400 with details for invalid payload", () => {

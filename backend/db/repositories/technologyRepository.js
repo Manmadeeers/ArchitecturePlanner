@@ -99,8 +99,27 @@ function buildCategoryHints(plan) {
     categories.add("messaging");
   }
 
-  if (plan?.input?.applicationType === "mobile-backend") {
+  if (
+    plan?.input?.applicationType === "mobile-app" ||
+    plan?.input?.applicationType === "mobile-backend" ||
+    plan?.input?.applicationType === "native-mobile-app" ||
+    plan?.input?.applicationType === "cross-platform-mobile"
+  ) {
     categories.add("mobile");
+  }
+
+  if (
+    plan?.input?.applicationType === "api-platform" ||
+    plan?.input?.applicationType === "integrated-system" ||
+    plan?.input?.applicationType === "dbms-platform" ||
+    plan?.input?.applicationType === "iot-platform"
+  ) {
+    categories.add("integration");
+    categories.add("backend");
+  }
+
+  if (plan?.input?.applicationType === "dbms-platform") {
+    categories.add("database");
   }
 
   return categories;
