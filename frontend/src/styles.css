@@ -876,20 +876,28 @@ code {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
+  align-items: stretch;
 }
 
 .checkbox-card {
-  display: flex;
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr);
   gap: 10px;
-  align-items: center;
+  align-items: start;
   padding: 12px 14px;
   border-radius: 16px;
   background: var(--bg-card);
   border: 1px solid var(--border-soft);
+  min-height: 56px;
 }
 
 .checkbox-card input {
   accent-color: var(--accent);
+  margin-top: 2px;
+}
+
+.checkbox-card span {
+  line-height: 1.35;
 }
 
 .primary-button,

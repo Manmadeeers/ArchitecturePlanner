@@ -16,6 +16,14 @@ const COMPONENT_CATEGORY_HINTS = {
   "load-balancer": ["infrastructure", "cloud"],
   "mobile-client-support": ["mobile", "framework"],
   "api-consumer-layer": ["integration", "backend"],
+  "product-analytics": ["backend", "other"],
+  "reporting-service": ["backend", "other"],
+  "workspace-management": ["backend", "other"],
+  "integration-hub": ["integration", "backend"],
+  "webhook-handler": ["integration", "backend"],
+  "workflow-engine": ["backend", "other"],
+  "subscription-billing": ["backend", "integration"],
+  "invoice-service": ["backend", "other"],
 };
 
 function normalizeOptionalText(value) {

@@ -122,6 +122,15 @@ const rules = {
     {
       id: "F3",
       when: {
+        coreFeatures: { includes: "subscription-billing" },
+      },
+      then: {
+        addComponents: ["payment-gateway", "subscription-billing", "invoice-service"],
+      },
+    },
+    {
+      id: "F4",
+      when: {
         coreFeatures: { includes: "file-upload" },
       },
       then: {
@@ -129,7 +138,7 @@ const rules = {
       },
     },
     {
-      id: "F4",
+      id: "F5",
       when: {
         coreFeatures: { includes: "search" },
       },
@@ -138,7 +147,52 @@ const rules = {
       },
     },
     {
-      id: "F5",
+      id: "F6",
+      when: {
+        coreFeatures: { includes: "analytics-dashboard" },
+      },
+      then: {
+        addComponents: ["product-analytics"],
+      },
+    },
+    {
+      id: "F7",
+      when: {
+        coreFeatures: { includes: "reporting" },
+      },
+      then: {
+        addComponents: ["reporting-service", "job-queue"],
+      },
+    },
+    {
+      id: "F8",
+      when: {
+        coreFeatures: { includes: "team-collaboration" },
+      },
+      then: {
+        addComponents: ["workspace-management", "rbac"],
+      },
+    },
+    {
+      id: "F9",
+      when: {
+        coreFeatures: { includes: "third-party-integrations" },
+      },
+      then: {
+        addComponents: ["integration-hub", "webhook-handler"],
+      },
+    },
+    {
+      id: "F10",
+      when: {
+        coreFeatures: { includes: "workflow-automation" },
+      },
+      then: {
+        addComponents: ["workflow-engine", "job-queue"],
+      },
+    },
+    {
+      id: "F11",
       when: {
         coreFeatures: { includes: "notifications" },
       },
@@ -147,7 +201,7 @@ const rules = {
       },
     },
     {
-      id: "F6",
+      id: "F12",
       when: {
         coreFeatures: { includes: "admin-panel" },
       },
