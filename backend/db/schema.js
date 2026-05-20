@@ -80,6 +80,44 @@ const planComponents = pgTable(
   }),
 );
 
+const scenarioSets = pgTable(
+  "scenario_sets",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    userId: bigint("user_id", { mode: "number" })
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    projectNameSnapshot: text("project_name_snapshot").notNull(),
+    baseInputPayload: jsonb("base_input_payload").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    userCreatedAtIdx: index("idx_scenario_sets_user_created_at").on(table.userId, table.createdAt),
+  }),
+);
+
+const scenarioRuns = pgTable(
+  "scenario_runs",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    scenarioSetId: bigint("scenario_set_id", { mode: "number" })
+      .notNull()
+      .references(() => scenarioSets.id, { onDelete: "cascade" }),
+    planRunId: bigint("plan_run_id", { mode: "number" })
+      .notNull()
+      .references(() => planRuns.id, { onDelete: "cascade" }),
+    scenarioKey: text("scenario_key").notNull(),
+    scenarioLabel: text("scenario_label").notNull(),
+    inputOverridePayload: jsonb("input_override_payload").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    scenarioSetIdx: index("idx_scenario_runs_scenario_set_id").on(table.scenarioSetId),
+    planRunIdx: uniqueIndex("uq_scenario_runs_plan_run_id").on(table.planRunId),
+    scenarioSetKeyUniqueIdx: uniqueIndex("uq_scenario_runs_set_key").on(table.scenarioSetId, table.scenarioKey),
+  }),
+);
+
 const technologyCategories = pgTable(
   "technology_categories",
   {
@@ -184,6 +222,8 @@ module.exports = {
   planRuns,
   projects,
   regionDataCache,
+  scenarioRuns,
+  scenarioSets,
   technologyCategories,
   technologies,
   users,

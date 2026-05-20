@@ -5,6 +5,7 @@ const { planRunTechnologies, technologies, technologyCategories } = require("../
 const { createAdminAuditRepository } = require("./adminAuditRepository");
 
 const auditRepository = createAdminAuditRepository();
+const EXCLUDED_TECHNOLOGY_NAMES = new Set(["dynamodb"]);
 
 const COMPONENT_CATEGORY_HINTS = {
   "react-frontend": ["frontend", "framework", "language"],
@@ -24,6 +25,108 @@ const COMPONENT_CATEGORY_HINTS = {
   "workflow-engine": ["backend", "other"],
   "subscription-billing": ["backend", "integration"],
   "invoice-service": ["backend", "other"],
+};
+
+const TECHNOLOGY_TAGS = {
+  "Node.js": ["javascript", "nodejs", "backend", "web", "rapid-delivery"],
+  Bun: ["javascript", "backend", "performance"],
+  Deno: ["javascript", "backend", "secure-default"],
+  Python: ["python", "backend", "api", "rapid-delivery"],
+  Java: ["java", "backend", "enterprise", "scale"],
+  Kotlin: ["kotlin", "backend", "mobile", "enterprise", "scale", "performance"],
+  "C#": ["dotnet", "backend", "enterprise", "managed-cloud"],
+  Go: ["go", "backend", "performance", "scale"],
+  Rust: ["rust", "backend", "performance", "security"],
+  PHP: ["php", "backend", "rapid-delivery"],
+  Ruby: ["ruby", "backend", "rapid-delivery"],
+  Elixir: ["elixir", "backend", "realtime", "scale"],
+  Express: ["javascript", "framework", "web", "rapid-delivery"],
+  NestJS: ["javascript", "framework", "backend", "enterprise"],
+  Fastify: ["javascript", "framework", "performance"],
+  Django: ["python", "framework", "rapid-delivery"],
+  FastAPI: ["python", "framework", "api", "performance"],
+  "Spring Boot": ["java", "framework", "enterprise", "scale"],
+  "ASP.NET Core": ["dotnet", "framework", "enterprise", "managed-cloud"],
+  Laravel: ["php", "framework", "rapid-delivery"],
+  "Ruby on Rails": ["ruby", "framework", "rapid-delivery"],
+  Phoenix: ["elixir", "framework", "realtime", "scale"],
+  PostgreSQL: ["database", "transactional", "general-purpose"],
+  MySQL: ["database", "transactional", "general-purpose"],
+  MariaDB: ["database", "transactional", "cost-efficient"],
+  MongoDB: ["database", "document", "rapid-delivery"],
+  Redis: ["cache", "database", "realtime", "performance"],
+  ClickHouse: ["database", "analytics", "scale", "performance"],
+  Cassandra: ["database", "distributed", "scale"],
+  DynamoDB: ["database", "managed-cloud", "scale"],
+  CockroachDB: ["database", "distributed", "scale", "resilience"],
+  "SQL Server": ["database", "enterprise", "dotnet"],
+  Nginx: ["infrastructure", "web", "performance"],
+  "HAProxy": ["infrastructure", "load-balancer", "performance"],
+  Envoy: ["infrastructure", "service-mesh", "scale"],
+  Cloudflare: ["cloud", "cdn", "edge", "security"],
+  AWS: ["cloud", "managed-cloud", "scale"],
+  Azure: ["cloud", "managed-cloud", "enterprise"],
+  "Google Cloud": ["cloud", "managed-cloud", "scale", "data"],
+  Kubernetes: ["devops", "scale", "complex"],
+  Docker: ["devops", "containers", "rapid-delivery"],
+  Terraform: ["devops", "infrastructure-as-code", "scale"],
+  Prometheus: ["devops", "observability", "reliability"],
+  Grafana: ["devops", "observability", "reliability"],
+  "OpenTelemetry": ["devops", "observability", "reliability"],
+  Sentry: ["devops", "observability", "rapid-delivery"],
+  RabbitMQ: ["messaging", "queue", "integration"],
+  "Apache Kafka": ["messaging", "streaming", "scale"],
+  NATS: ["messaging", "realtime", "performance"],
+  "AWS SQS": ["messaging", "managed-cloud", "queue"],
+  "Google Pub/Sub": ["messaging", "managed-cloud", "streaming"],
+  "React Native": ["mobile", "javascript", "rapid-delivery"],
+  Flutter: ["mobile", "cross-platform", "rapid-delivery"],
+  Swift: ["mobile", "ios", "performance"],
+  "Kotlin Multiplatform": ["mobile", "cross-platform", "complex"],
+  GraphQL: ["integration", "api", "web"],
+  Kong: ["integration", "api-gateway", "security"],
+  Apigee: ["integration", "api-gateway", "enterprise"],
+  MuleSoft: ["integration", "enterprise", "complex"],
+  Temporal: ["integration", "workflow", "scale"],
+  n8n: ["integration", "workflow", "rapid-delivery"],
+  Stripe: ["payments", "integration", "saas"],
+  Auth0: ["authentication", "managed-cloud", "rapid-delivery"],
+  Keycloak: ["authentication", "on-prem", "enterprise"],
+};
+
+const TECHNOLOGY_STACK_FAMILY = {
+  "Node.js": "nodejs",
+  Bun: "nodejs",
+  Deno: "nodejs",
+  Express: "nodejs",
+  NestJS: "nodejs",
+  Fastify: "nodejs",
+  JavaScript: "nodejs",
+  TypeScript: "nodejs",
+
+  Python: "python",
+  Django: "python",
+  FastAPI: "python",
+
+  Java: "java",
+  "Spring Boot": "java",
+
+  "C#": "dotnet",
+  "ASP.NET Core": "dotnet",
+  "SQL Server": "dotnet",
+  MSSQL: "dotnet",
+
+  Go: "go",
+  Rust: "rust",
+
+  PHP: "php",
+  Laravel: "php",
+
+  Ruby: "ruby",
+  "Ruby on Rails": "ruby",
+
+  Elixir: "elixir",
+  Phoenix: "elixir",
 };
 
 function normalizeOptionalText(value) {
@@ -98,7 +201,7 @@ function buildCategoryHints(plan) {
     }
   }
 
-  if (plan?.recommendation?.deploymentModel === "cloud-managed") {
+  if (plan?.recommendation?.deploymentModel === "managed-cloud") {
     categories.add("cloud");
     categories.add("infrastructure");
   }
@@ -133,13 +236,272 @@ function buildCategoryHints(plan) {
   return categories;
 }
 
-function buildTechnologyJustification(technology, categoryHints) {
+function buildPlanPreferenceTags(plan) {
+  const tags = new Set();
+
+  tags.add(String(plan?.input?.applicationType || "web-app"));
+  tags.add(String(plan?.input?.businessType || "saas"));
+  tags.add(String(plan?.recommendation?.architectureStyle || "layered-monolith"));
+  tags.add(String(plan?.recommendation?.deploymentModel || "managed-cloud"));
+
+  if (plan?.input?.realtimeFeatures) {
+    tags.add("realtime");
+    tags.add("streaming");
+  }
+
+  if (plan?.input?.needFastDelivery) {
+    tags.add("rapid-delivery");
+  }
+
+  if (plan?.input?.dataSensitivity === "high") {
+    tags.add("security");
+    tags.add("enterprise");
+  }
+
+  if (["fast", "unpredictable"].includes(String(plan?.input?.expectedGrowth || ""))) {
+    tags.add("scale");
+    tags.add("performance");
+  }
+
+  if (String(plan?.input?.teamTechnicalLevel || "medium") === "low") {
+    tags.add("low-complexity");
+  }
+
+  const features = Array.isArray(plan?.input?.coreFeatures) ? plan.input.coreFeatures : [];
+  if (features.includes("payments") || features.includes("subscription-billing")) {
+    tags.add("payments");
+  }
+  if (features.includes("third-party-integrations")) {
+    tags.add("integration");
+  }
+
+  const stackFamily = String(plan?.input?.preferredStackFamily || "no-preference");
+  const stackFamilyTags = {
+    nodejs: ["javascript", "nodejs", "rapid-delivery"],
+    python: ["python", "rapid-delivery"],
+    java: ["java", "enterprise", "scale"],
+    dotnet: ["dotnet", "managed-cloud", "enterprise"],
+    go: ["go", "performance", "scale"],
+    rust: ["rust", "performance", "security"],
+    php: ["php", "rapid-delivery"],
+    ruby: ["ruby", "rapid-delivery"],
+    elixir: ["elixir", "realtime", "scale"],
+  };
+
+  for (const tag of stackFamilyTags[stackFamily] || []) {
+    tags.add(tag);
+  }
+
+  return tags;
+}
+
+function countTagOverlap(technologyName, preferenceTags) {
+  const tags = TECHNOLOGY_TAGS[technologyName] || [];
+  return tags.reduce((score, tag) => (preferenceTags.has(tag) ? score + 1 : score), 0);
+}
+
+function buildTechnologyJustification(technology, categoryHints, tagOverlap) {
   const categoryCode = String(technology.categoryCode || "").toLowerCase();
   if (categoryHints.has(categoryCode)) {
     return `Matches recommended ${technology.categoryName} layer for this architecture.`;
   }
 
+  if (tagOverlap > 0) {
+    return "Aligned with the selected product and delivery constraints.";
+  }
+
   return "Included as an active catalog technology option for implementation planning.";
+}
+
+function getTechnologyStackFamily(technologyName) {
+  return TECHNOLOGY_STACK_FAMILY[String(technologyName)] || null;
+}
+
+function resolveTargetStackFamily(plan, selected, rankedTechnologies) {
+  const preferred = String(plan?.input?.preferredStackFamily || "no-preference");
+  if (preferred !== "no-preference") {
+    return preferred;
+  }
+
+  const preferredCategories = new Set(["backend", "framework", "language"]);
+
+  for (const technology of selected) {
+    const categoryCode = String(technology.categoryCode || "").toLowerCase();
+    if (!preferredCategories.has(categoryCode)) {
+      continue;
+    }
+
+    const family = getTechnologyStackFamily(technology.name);
+    if (family) {
+      return family;
+    }
+  }
+
+  for (const technology of rankedTechnologies) {
+    const categoryCode = String(technology.categoryCode || "").toLowerCase();
+    if (!preferredCategories.has(categoryCode)) {
+      continue;
+    }
+
+    const family = getTechnologyStackFamily(technology.name);
+    if (family) {
+      return family;
+    }
+  }
+
+  return null;
+}
+
+function replaceSelectionAtIndex(selected, index, replacement) {
+  const next = [...selected];
+  next[index] = replacement;
+  return next;
+}
+
+function findCompatibleReplacement(rankedTechnologies, selected, targetFamily, targetCategory, indexToReplace) {
+  const usedIds = new Set(
+    selected
+      .filter((_, index) => index !== indexToReplace)
+      .map((entry) => entry.id),
+  );
+
+  const categoryMatch = rankedTechnologies.find((candidate) => {
+    if (usedIds.has(candidate.id)) {
+      return false;
+    }
+
+    if (String(candidate.categoryCode || "").toLowerCase() !== targetCategory) {
+      return false;
+    }
+
+    return getTechnologyStackFamily(candidate.name) === targetFamily;
+  });
+
+  if (categoryMatch) {
+    return categoryMatch;
+  }
+
+  return rankedTechnologies.find((candidate) => {
+    if (usedIds.has(candidate.id)) {
+      return false;
+    }
+
+    const categoryCode = String(candidate.categoryCode || "").toLowerCase();
+    if (!["backend", "framework", "language"].includes(categoryCode)) {
+      return false;
+    }
+
+    return getTechnologyStackFamily(candidate.name) === targetFamily;
+  });
+}
+
+function reconcileStackCompatibility(plan, selected, rankedTechnologies) {
+  const targetFamily = resolveTargetStackFamily(plan, selected, rankedTechnologies);
+  if (!targetFamily) {
+    return selected;
+  }
+
+  let nextSelection = [...selected];
+
+  for (let index = 0; index < nextSelection.length; index += 1) {
+    const technology = nextSelection[index];
+    const categoryCode = String(technology.categoryCode || "").toLowerCase();
+
+    if (!["backend", "framework", "language"].includes(categoryCode)) {
+      continue;
+    }
+
+    const family = getTechnologyStackFamily(technology.name);
+    if (!family || family === targetFamily) {
+      continue;
+    }
+
+    const replacement = findCompatibleReplacement(
+      rankedTechnologies,
+      nextSelection,
+      targetFamily,
+      categoryCode,
+      index,
+    );
+
+    if (!replacement) {
+      continue;
+    }
+
+    nextSelection = replaceSelectionAtIndex(nextSelection, index, replacement);
+  }
+
+  return nextSelection;
+}
+
+function buildCategoryPriority(plan, categoryHints) {
+  const priority = [];
+  const pushUnique = (categoryCode) => {
+    if (!priority.includes(categoryCode)) {
+      priority.push(categoryCode);
+    }
+  };
+
+  const appType = String(plan?.input?.applicationType || "web-app");
+
+  if (appType === "mobile-app") {
+    ["mobile", "backend", "framework", "database", "integration", "cloud", "devops"].forEach(pushUnique);
+  } else if (["api-platform", "integrated-system", "dbms-platform", "iot-platform"].includes(appType)) {
+    ["backend", "framework", "integration", "database", "messaging", "infrastructure", "devops"].forEach(pushUnique);
+  } else {
+    ["frontend", "backend", "framework", "database", "infrastructure", "cloud", "devops"].forEach(pushUnique);
+  }
+
+  for (const hint of categoryHints) {
+    pushUnique(hint);
+  }
+
+  ["language", "other"].forEach(pushUnique);
+  return priority;
+}
+
+function pickDiverseTechnologies(rankedTechnologies, categoryPriority, limit) {
+  const selected = [];
+  const usedIds = new Set();
+  const byCategory = new Map();
+
+  for (const technology of rankedTechnologies) {
+    const categoryCode = String(technology.categoryCode || "").toLowerCase();
+    if (!byCategory.has(categoryCode)) {
+      byCategory.set(categoryCode, []);
+    }
+    byCategory.get(categoryCode).push(technology);
+  }
+
+  for (const categoryCode of categoryPriority) {
+    if (selected.length >= limit) {
+      break;
+    }
+
+    const candidates = byCategory.get(categoryCode) || [];
+    const candidate = candidates.find((entry) => !usedIds.has(entry.id));
+    if (!candidate) {
+      continue;
+    }
+
+    selected.push(candidate);
+    usedIds.add(candidate.id);
+  }
+
+  for (const technology of rankedTechnologies) {
+    if (selected.length >= limit) {
+      break;
+    }
+
+    if (usedIds.has(technology.id)) {
+      continue;
+    }
+
+    selected.push(technology);
+    usedIds.add(technology.id);
+  }
+
+  return selected;
 }
 
 function createDatabaseRequiredError() {
@@ -387,18 +749,22 @@ function createTechnologyRepository() {
 
     async selectTechnologiesForPlan(plan, options = {}) {
       const db = getDb();
-      const limit = Number.isInteger(options.limit) && options.limit > 0 ? options.limit : 6;
+      const limit = Number.isInteger(options.limit) && options.limit > 0 ? options.limit : 8;
 
       if (!db) {
         return [];
       }
 
-      const activeTechnologies = await this.listTechnologies({ includeInactive: false });
+      const activeTechnologies = (await this.listTechnologies({ includeInactive: false })).filter(
+        (technology) => !EXCLUDED_TECHNOLOGY_NAMES.has(String(technology?.name || "").toLowerCase())
+      );
       if (activeTechnologies.length === 0) {
         return [];
       }
 
       const categoryHints = buildCategoryHints(plan);
+      const preferenceTags = buildPlanPreferenceTags(plan);
+      const categoryPriority = buildCategoryPriority(plan, categoryHints);
       const componentText = Array.isArray(plan?.recommendation?.components)
         ? plan.recommendation.components.join(" ").toLowerCase()
         : "";
@@ -417,10 +783,14 @@ function createTechnologyRepository() {
             score += 2;
           }
 
+          const tagOverlap = countTagOverlap(technology.name, preferenceTags);
+          score += tagOverlap * 2;
+
           return {
             ...technology,
             score,
-            justification: buildTechnologyJustification(technology, categoryHints),
+            tagOverlap,
+            justification: buildTechnologyJustification(technology, categoryHints, tagOverlap),
           };
         })
         .sort((left, right) => {
@@ -432,7 +802,9 @@ function createTechnologyRepository() {
         });
 
       const withPositiveScore = rankedTechnologies.filter((technology) => technology.score > 0);
-      const selected = (withPositiveScore.length > 0 ? withPositiveScore : rankedTechnologies).slice(0, limit);
+      const pool = withPositiveScore.length > 0 ? withPositiveScore : rankedTechnologies;
+      let selected = pickDiverseTechnologies(pool, categoryPriority, limit);
+      selected = reconcileStackCompatibility(plan, selected, pool);
 
       return selected.map((technology) => ({
         technologyId: technology.id,

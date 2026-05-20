@@ -2,9 +2,10 @@ const { and, desc, eq, sql } = require("drizzle-orm");
 
 const { DEFAULT_DEVELOPMENT_PLAN } = require("../../engine/planEngine");
 const { getRegionProfile } = require("../../engine/regionCatalog");
+const { buildDiagram, buildDrawioXml } = require("../../engine/diagramBuilder");
 const { getDb } = require("../client");
 const { createTechnologyRepository } = require("./technologyRepository");
-const { planComponents, planRuns, projects } = require("../schema");
+const { planComponents, planRuns, projects, scenarioRuns, scenarioSets } = require("../schema");
 
 const MAX_LIST_LIMIT = 100;
 const technologyRepository = createTechnologyRepository();
@@ -109,36 +110,43 @@ function createPlanRepository() {
           id: projects.id,
         });
 
+      const selectedTechnologies = await technologyRepository.selectTechnologiesForPlan(plan);
+      const planWithTechnologies = {
+        ...plan,
+        technologies: selectedTechnologies,
+      };
+      planWithTechnologies.diagram = buildDiagram(planWithTechnologies);
+      planWithTechnologies.drawioXml = buildDrawioXml(planWithTechnologies);
+
       const [runRow] = await db
         .insert(planRuns)
         .values({
           projectId: projectRow.id,
           userId,
-          planId: plan.planId,
+          planId: planWithTechnologies.planId,
           projectNameSnapshot: projectName,
-          inputPayload: plan.input,
-          summary: plan.summary,
-          recommendationPayload: plan.recommendation,
-          regionProfilePayload: plan.regionProfile,
-          roadmapPayload: plan.roadmap,
-          developmentPlanPayload: plan.developmentPlan,
-          costPayload: plan.cost,
-          diagramPayload: plan.diagram,
-          drawioXml: plan.drawioXml,
-          architectureStyle: plan.recommendation?.architectureStyle || null,
-          deploymentModel: plan.recommendation?.deploymentModel || null,
-          targetRegion: plan.input?.targetRegion || null,
-          monthlyEstimate: extractMonthlyEstimate(plan),
+          inputPayload: planWithTechnologies.input,
+          summary: planWithTechnologies.summary,
+          recommendationPayload: planWithTechnologies.recommendation,
+          regionProfilePayload: planWithTechnologies.regionProfile,
+          roadmapPayload: planWithTechnologies.roadmap,
+          developmentPlanPayload: planWithTechnologies.developmentPlan,
+          costPayload: planWithTechnologies.cost,
+          diagramPayload: planWithTechnologies.diagram,
+          drawioXml: planWithTechnologies.drawioXml,
+          architectureStyle: planWithTechnologies.recommendation?.architectureStyle || null,
+          deploymentModel: planWithTechnologies.recommendation?.deploymentModel || null,
+          targetRegion: planWithTechnologies.input?.targetRegion || null,
+          monthlyEstimate: extractMonthlyEstimate(planWithTechnologies),
         })
         .returning({
           id: planRuns.id,
           createdAt: planRuns.createdAt,
         });
 
-      const selectedTechnologies = await technologyRepository.selectTechnologiesForPlan(plan);
       await technologyRepository.attachTechnologiesToPlanRun(runRow.id, selectedTechnologies);
 
-      const components = uniqueRecommendationComponents(plan);
+      const components = uniqueRecommendationComponents(planWithTechnologies);
       if (components.length > 0) {
         await db
           .insert(planComponents)
@@ -277,6 +285,48 @@ function createPlanRepository() {
         id: row.id,
         planId: row.planId,
         projectName: row.projectNameSnapshot,
+      };
+    },
+
+    async saveScenarioSet(userId, projectNameSnapshot, baseInputPayload, scenarioEntries = []) {
+      const db = getDb();
+
+      if (!db) {
+        return null;
+      }
+
+      if (!userId || !Array.isArray(scenarioEntries) || scenarioEntries.length === 0) {
+        return null;
+      }
+
+      const [scenarioSetRow] = await db
+        .insert(scenarioSets)
+        .values({
+          userId,
+          projectNameSnapshot: normalizeProjectName(projectNameSnapshot),
+          baseInputPayload: baseInputPayload || {},
+        })
+        .returning({
+          id: scenarioSets.id,
+          createdAt: scenarioSets.createdAt,
+        });
+
+      await db
+        .insert(scenarioRuns)
+        .values(
+          scenarioEntries.map((entry) => ({
+            scenarioSetId: scenarioSetRow.id,
+            planRunId: entry.planRunId,
+            scenarioKey: String(entry.scenarioKey || ""),
+            scenarioLabel: String(entry.scenarioLabel || ""),
+            inputOverridePayload: entry.inputOverridePayload || {},
+          })),
+        )
+        .onConflictDoNothing();
+
+      return {
+        id: scenarioSetRow.id,
+        createdAt: scenarioSetRow.createdAt,
       };
     },
   };

@@ -3,10 +3,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useI18n } from "../i18n";
 import { QuestionnairePanel } from "./QuestionnairePanel";
 import { ResultPanel } from "./ResultPanel";
+import { ScenarioSimulatorPanel } from "./ScenarioSimulatorPanel";
 
 const WORKSPACE_TABS = {
   build: "build",
   result: "result",
+  scenarios: "scenarios",
 };
 
 export function PlannerWorkspace({ planner }) {
@@ -21,6 +23,7 @@ export function PlannerWorkspace({ planner }) {
   }, [currentPlanId]);
 
   const canOpenResult = Boolean(currentPlanId) || Boolean(planner.error);
+  const canOpenScenarios = planner.canGeneratePlan;
 
   const tabs = useMemo(
     () => [
@@ -33,8 +36,13 @@ export function PlannerWorkspace({ planner }) {
         label: t("result.title"),
         disabled: !canOpenResult,
       },
+      {
+        id: WORKSPACE_TABS.scenarios,
+        label: t("scenarios.title"),
+        disabled: !canOpenScenarios,
+      },
     ],
-    [canOpenResult, t]
+    [canOpenResult, canOpenScenarios, t]
   );
 
   return (
@@ -65,8 +73,16 @@ export function PlannerWorkspace({ planner }) {
           toggleFeature={planner.toggleFeature}
           updateField={planner.updateField}
         />
-      ) : (
+      ) : activeTab === WORKSPACE_TABS.result ? (
         <ResultPanel error={planner.error} planResponse={planner.planResponse} />
+      ) : (
+        <ScenarioSimulatorPanel
+          error={planner.error}
+          formValues={planner.formValues}
+          isLoadingScenarios={planner.isLoadingScenarios}
+          onGenerateScenarioSet={planner.generateScenarioSet}
+          scenarioResponse={planner.scenarioResponse}
+        />
       )}
 
       {activeTab === WORKSPACE_TABS.build && canOpenResult ? (

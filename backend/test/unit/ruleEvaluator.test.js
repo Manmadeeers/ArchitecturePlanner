@@ -29,7 +29,7 @@ test("evaluateRules applies operator combinations and tracks applied rule ids", 
         monthlyUsers: { gte: 1000, lt: 5000 },
       },
       then: {
-        architectureStyle: "modular-monolith",
+        architectureStyle: "microservices",
         costProfile: "balanced",
       },
     },
@@ -57,7 +57,7 @@ test("evaluateRules applies operator combinations and tracks applied rule ids", 
 
   const result = evaluateRules(input, ruleGroups);
 
-  assert.equal(result.architectureStyle, "modular-monolith");
+  assert.equal(result.architectureStyle, "microservices");
   assert.equal(result.costProfile, "balanced");
   assert.deepEqual(result.components, ["queue"]);
   assert.deepEqual(result.roadmap, ["Enable performance monitoring early."]);
@@ -96,7 +96,7 @@ test("evaluateRules de-duplicates arrays merged from multiple matched rules", ()
 test("evaluateRules returns independent default structure when no rules match", () => {
   const result = evaluateRules({ stage: "none" }, createEmptyRuleGroups());
 
-  assert.equal(result.architectureStyle, "monolith");
+  assert.equal(result.architectureStyle, "layered-monolith");
   assert.equal(result.deploymentModel, "cloud");
   assert.equal(result.costProfile, "minimal");
   assert.deepEqual(result.components, []);

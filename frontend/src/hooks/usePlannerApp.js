@@ -45,6 +45,7 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
   const [engineSettingsDraft, setEngineSettingsDraft] = useState(null);
   const [engineSettingsRecord, setEngineSettingsRecord] = useState(null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
+  const [isLoadingScenarios, setIsLoadingScenarios] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   const [isLoadingProjects, setIsLoadingProjects] = useState(false);
   const [isLoadingSelectedProject, setIsLoadingSelectedProject] = useState(false);
@@ -58,6 +59,7 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
   const [technologySaveInFlightId, setTechnologySaveInFlightId] = useState(null);
   const [technologyDeleteInFlightId, setTechnologyDeleteInFlightId] = useState(null);
   const [error, setError] = useState("");
+  const [scenarioResponse, setScenarioResponse] = useState(null);
 
   async function fetchJson(path, options = {}) {
     const token = options.token || (await getAccessToken?.());
@@ -605,6 +607,7 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
 
     try {
       const token = await submitPlan();
+      setScenarioResponse(null);
       await refreshRecentPlans(token);
       if (projects.length > 0 || activeView === "projects") {
         await refreshProjects(token);
@@ -613,6 +616,45 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
       setError(submitError.message);
     } finally {
       setIsLoadingPlan(false);
+    }
+  }
+
+  async function generateScenarioSet(scenarios) {
+    if (!canGeneratePlan || !getAccessToken) {
+      setError(
+        isAuthReady
+          ? t("errors.generatePlan")
+          : t("errors.auth0Missing"),
+      );
+      return false;
+    }
+
+    setIsLoadingScenarios(true);
+    setError("");
+
+    try {
+      const { data, token } = await fetchJson("/plans/scenarios/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          baseInput: formValues,
+          scenarios,
+        }),
+      });
+
+      setScenarioResponse(data);
+      await refreshRecentPlans(token);
+      if (projects.length > 0 || activeView === "projects") {
+        await refreshProjects(token);
+      }
+      return true;
+    } catch (scenarioError) {
+      setError(scenarioError.message);
+      return false;
+    } finally {
+      setIsLoadingScenarios(false);
     }
   }
 
@@ -719,9 +761,11 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
     isLoadingPlan,
     isLoadingProfile,
     isLoadingProjects,
+    isLoadingScenarios,
     isLoadingSelectedProject,
     isSavingEngineSettings,
     planResponse,
+    scenarioResponse,
     projectDeleteInFlightId,
     projects,
     questionnaire,
@@ -740,6 +784,7 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
     showPlannerView,
     showProfileView,
     showProjectsView,
+    generateScenarioSet,
     toggleFeature,
     updateEngineBaseCost,
     updateEngineCostValue,

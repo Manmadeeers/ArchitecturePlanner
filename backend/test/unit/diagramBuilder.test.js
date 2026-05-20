@@ -10,11 +10,12 @@ function createPlan(overrides = {}) {
       ...overrides.input,
     },
     recommendation: {
-      architectureStyle: "modular-monolith",
+      architectureStyle: "microservices",
       deploymentModel: "cloud",
       components: [],
       ...overrides.recommendation,
     },
+    technologies: Array.isArray(overrides.technologies) ? overrides.technologies : [],
   };
 }
 
@@ -55,4 +56,26 @@ test("buildDrawioXml produces a valid xml envelope", () => {
   assert.ok(xml.includes("<mxfile host=\"app.diagrams.net\">"));
   assert.ok(xml.includes("<mxGraphModel"));
   assert.ok(xml.includes("</mxfile>"));
+});
+
+test("buildDiagram uses selected technologies for app and database labels", () => {
+  const diagram = buildDiagram(
+    createPlan({
+      technologies: [
+        { name: "C#", categoryCode: "backend" },
+        { name: "ASP.NET Core", categoryCode: "framework" },
+        { name: "TypeScript", categoryCode: "language" },
+        { name: "SQL Server", categoryCode: "database" },
+      ],
+    }),
+  );
+
+  const appModule = diagram.nodes.find((node) => node.id === "app-module");
+  const database = diagram.nodes.find((node) => node.id === "database");
+
+  assert.ok(appModule);
+  assert.ok(appModule.lines.includes("C# + ASP.NET Core API"));
+  assert.equal(appModule.lines.includes("Node.js + Express API"), false);
+  assert.ok(database);
+  assert.equal(database.label, "SQL Server");
 });

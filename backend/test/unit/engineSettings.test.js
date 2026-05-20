@@ -13,9 +13,9 @@ test("normalizeEngineSettings keeps valid custom values", () => {
     },
     costModel: {
       baseMonthlyCost: {
-        monolith: 90,
-        "modular-monolith": 210,
-        "scalable-services": 480,
+        "layered-monolith": 100,
+        microservices: 290,
+        "event-driven": 520,
       },
       featureComponentWeight: 20,
       monthlyUsersDivider: 500,
@@ -36,7 +36,7 @@ test("normalizeEngineSettings keeps valid custom values", () => {
   });
 
   assert.equal(normalized.regionMultipliers.global, 1.4);
-  assert.equal(normalized.costModel.baseMonthlyCost.monolith, 90);
+  assert.equal(normalized.costModel.baseMonthlyCost["layered-monolith"], 100);
   assert.equal(normalized.costModel.featureComponentWeight, 20);
   assert.equal(normalized.costModel.fastDeliverySurcharge, 0);
   assert.equal(normalized.costModel.costBreakdown.database, 0.3);
@@ -50,7 +50,7 @@ test("normalizeEngineSettings falls back to defaults for invalid numbers and pro
     },
     costModel: {
       baseMonthlyCost: {
-        monolith: "invalid",
+        "layered-monolith": "invalid",
       },
       featureComponentWeight: -10,
       monthlyUsersDivider: 0,
@@ -63,8 +63,8 @@ test("normalizeEngineSettings falls back to defaults for invalid numbers and pro
 
   assert.equal(normalized.regionMultipliers.europe, DEFAULT_ENGINE_SETTINGS.regionMultipliers.europe);
   assert.equal(
-    normalized.costModel.baseMonthlyCost.monolith,
-    DEFAULT_ENGINE_SETTINGS.costModel.baseMonthlyCost.monolith,
+    normalized.costModel.baseMonthlyCost["layered-monolith"],
+    DEFAULT_ENGINE_SETTINGS.costModel.baseMonthlyCost["layered-monolith"],
   );
   assert.equal(
     normalized.costModel.featureComponentWeight,

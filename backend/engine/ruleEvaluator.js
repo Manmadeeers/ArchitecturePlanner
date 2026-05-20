@@ -1,5 +1,5 @@
 const DEFAULT_RESULT = {
-  architectureStyle: "monolith",
+  architectureStyle: "layered-monolith",
   deploymentModel: "cloud",
   costProfile: "minimal",
   constraints: [],

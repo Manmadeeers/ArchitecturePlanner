@@ -54,6 +54,7 @@ function createEdge({
 function buildDiagram(plan) {
   const dataModuleLines = buildDataModuleLines(plan);
   const clientShellLabel = getClientShellLabel(plan.input.applicationType);
+  const databaseLabel = getDatabaseLabel(plan);
 
   const nodes = [
     createNode({
@@ -181,7 +182,8 @@ function buildDiagram(plan) {
     }),
     createNode({
       id: "database",
-      label: "PostgreSQL",
+      label: databaseLabel,
+      lines: [databaseLabel],
       role: "database",
       shape: "cylinder",
       width: 240,
@@ -254,14 +256,18 @@ function buildDiagram(plan) {
 }
 
 function buildClientModuleLines(plan) {
+  const frontendTechnology = findTechnologyByCategory(plan, "frontend");
+  const mobileTechnology = findTechnologyByCategory(plan, "mobile");
+  const languageTechnology = findTechnologyByCategory(plan, "language");
+
   switch (plan.input.applicationType) {
     case "web-and-mobile":
-      return ["React Frontend", "Web + Mobile Clients"];
+      return [frontendTechnology?.name || "Web Client", mobileTechnology?.name || "Mobile Client"];
     case "mobile-app":
     case "mobile-backend":
     case "native-mobile-app":
     case "cross-platform-mobile":
-      return ["Mobile Client Support", "API Integration"];
+      return [mobileTechnology?.name || "Mobile Client", "API Integration"];
     case "api-platform":
       return ["API Consumer Layer", "Partner / Internal Clients"];
     case "integrated-system":
@@ -271,7 +277,7 @@ function buildClientModuleLines(plan) {
     case "iot-platform":
       return ["API Consumer Layer", "IoT Devices / Gateways"];
     default:
-      return ["React Frontend", "JavaScript"];
+      return [frontendTechnology?.name || "Web Client", languageTechnology?.name || "Application Client"];
   }
 }
 
@@ -309,10 +315,38 @@ function buildIngressModuleLines(plan) {
 }
 
 function buildApplicationModuleLines(plan) {
+  const backendTechnology = findTechnologyByCategory(plan, "backend");
+  const frameworkTechnology = findTechnologyByCategory(plan, "framework");
+  const languageTechnology = findTechnologyByCategory(plan, "language");
+
+  const runtimeLabel = (() => {
+    if (backendTechnology && frameworkTechnology) {
+      return `${backendTechnology.name} + ${frameworkTechnology.name} API`;
+    }
+
+    if (frameworkTechnology) {
+      return `${frameworkTechnology.name} API`;
+    }
+
+    if (backendTechnology) {
+      return `${backendTechnology.name} API`;
+    }
+
+    return "Application API";
+  })();
+
   const lines = [
     getArchitectureRuntimeLabel(plan.recommendation.architectureStyle),
-    "Node.js + Express API",
+    runtimeLabel,
   ];
+
+  if (
+    languageTechnology &&
+    languageTechnology.name !== backendTechnology?.name &&
+    languageTechnology.name !== frameworkTechnology?.name
+  ) {
+    lines.push(languageTechnology.name);
+  }
 
   const optionalLines = [
     plan.recommendation.components.includes("auth-module") ? "Auth Module" : null,
@@ -324,6 +358,21 @@ function buildApplicationModuleLines(plan) {
   ].filter(Boolean);
 
   return [...lines, ...optionalLines].slice(0, 4);
+}
+
+function getDatabaseLabel(plan) {
+  return findTechnologyByCategory(plan, "database")?.name || "PostgreSQL";
+}
+
+function findTechnologyByCategory(plan, categoryCode) {
+  const technologies = Array.isArray(plan?.technologies) ? plan.technologies : [];
+  const normalizedCategoryCode = String(categoryCode || "").toLowerCase();
+
+  return (
+    technologies.find(
+      (technology) => String(technology?.categoryCode || technology?.category || "").toLowerCase() === normalizedCategoryCode
+    ) || null
+  );
 }
 
 function buildDataModuleLines(plan) {
@@ -367,9 +416,12 @@ function buildDataProtocolLabel(plan) {
 
 function getArchitectureRuntimeLabel(architectureStyle) {
   return {
-    monolith: "Monolith Service",
-    "modular-monolith": "Modular Monolith",
-    "scalable-services": "Scalable Services",
+    "layered-monolith": "Layered Monolith",
+    microservices: "Microservices",
+    "event-driven": "Event-Driven Services",
+    monolith: "Layered Monolith",
+    "modular-monolith": "Microservices",
+    "scalable-services": "Event-Driven Services",
   }[architectureStyle] || "Application Service";
 }
 

@@ -108,7 +108,7 @@ test("generatePlan builds deterministic planId when Date.now and Math.random are
   }
 });
 
-test("generatePlan appends roadmap steps for idea stage, file uploads and realtime", () => {
+test("generatePlan appends concrete roadmap milestones for idea stage, file uploads and realtime", () => {
   const plan = generatePlan(
     createValidInput({
       projectStage: "idea",
@@ -119,19 +119,20 @@ test("generatePlan appends roadmap steps for idea stage, file uploads and realti
 
   assert.ok(
     plan.roadmap.includes(
-      "Validate the MVP with one deployment environment before investing in advanced infrastructure.",
+      "Week 1: lock MVP scope and acceptance criteria with 5-10 pilot users before adding non-critical modules.",
     ),
   );
   assert.ok(
     plan.roadmap.includes(
-      "Add storage lifecycle policies when user-generated content volume starts growing.",
+      "Storage milestone: enable object lifecycle and archive policies before stored assets exceed 100 GB or 50000 files.",
     ),
   );
   assert.ok(
     plan.roadmap.includes(
-      "Stress-test realtime traffic and move stateful communication behind dedicated gateways as usage increases.",
+      "Realtime milestone: run load test at target peak concurrency and introduce dedicated websocket gateway if concurrent sessions exceed 1000.",
     ),
   );
+  assert.ok(plan.roadmap.some((step) => step.startsWith("Cost checkpoint: keep monthly infrastructure spend below $")));
 });
 
 test("generatePlan applies region multiplier overrides from engine settings", () => {

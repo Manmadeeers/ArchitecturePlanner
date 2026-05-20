@@ -7,9 +7,9 @@ const DEFAULT_ENGINE_SETTINGS = Object.freeze({
   },
   costModel: {
     baseMonthlyCost: {
-      monolith: 70,
-      "modular-monolith": 180,
-      "scalable-services": 420,
+      "layered-monolith": 90,
+      microservices: 260,
+      "event-driven": 460,
     },
     featureComponentWeight: 18,
     monthlyUsersDivider: 700,
@@ -62,17 +62,17 @@ function normalizeEngineSettings(rawSettings = {}) {
     },
     costModel: {
       baseMonthlyCost: {
-        monolith: normalizePositiveNumber(
-          baseMonthlyCost.monolith,
-          DEFAULT_ENGINE_SETTINGS.costModel.baseMonthlyCost.monolith
+        "layered-monolith": normalizePositiveNumber(
+          baseMonthlyCost["layered-monolith"] ?? baseMonthlyCost.monolith,
+          DEFAULT_ENGINE_SETTINGS.costModel.baseMonthlyCost["layered-monolith"]
         ),
-        "modular-monolith": normalizePositiveNumber(
-          baseMonthlyCost["modular-monolith"],
-          DEFAULT_ENGINE_SETTINGS.costModel.baseMonthlyCost["modular-monolith"]
+        microservices: normalizePositiveNumber(
+          baseMonthlyCost.microservices ?? baseMonthlyCost["modular-monolith"],
+          DEFAULT_ENGINE_SETTINGS.costModel.baseMonthlyCost.microservices
         ),
-        "scalable-services": normalizePositiveNumber(
-          baseMonthlyCost["scalable-services"],
-          DEFAULT_ENGINE_SETTINGS.costModel.baseMonthlyCost["scalable-services"]
+        "event-driven": normalizePositiveNumber(
+          baseMonthlyCost["event-driven"] ?? baseMonthlyCost["scalable-services"],
+          DEFAULT_ENGINE_SETTINGS.costModel.baseMonthlyCost["event-driven"]
         ),
       },
       featureComponentWeight: normalizePositiveNumber(

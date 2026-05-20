@@ -7,7 +7,7 @@ const rules = {
         expectedGrowth: { eq: "slow" },
       },
       then: {
-        architectureStyle: "monolith",
+        architectureStyle: "layered-monolith",
       },
     },
     {
@@ -16,7 +16,7 @@ const rules = {
         monthlyUsers: { gte: 1000, lt: 20000 },
       },
       then: {
-        architectureStyle: "modular-monolith",
+        architectureStyle: "microservices",
       },
     },
     {
@@ -28,7 +28,7 @@ const rules = {
         ],
       },
       then: {
-        architectureStyle: "scalable-services",
+        architectureStyle: "event-driven",
       },
     },
     {
