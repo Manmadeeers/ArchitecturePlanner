@@ -42,6 +42,52 @@ function buildDecisionPoints(plan, helpers, copy) {
   return points;
 }
 
+function buildRecommendationNarrative(plan, helpers) {
+  const { formatCurrency, getValueLabel } = helpers;
+  const architectureStyle = plan?.recommendation?.architectureStyle || "layered-monolith";
+  const deploymentModel = plan?.recommendation?.deploymentModel || "managed-cloud";
+  const architectureLabel = getValueLabel(architectureStyle);
+  const deploymentLabel = getValueLabel(deploymentModel);
+  const topComponents = (plan?.recommendation?.components || [])
+    .slice(0, 3)
+    .map((component) => getValueLabel(component))
+    .join(", ");
+
+  const architectureReason = {
+    "layered-monolith":
+      "The plan prioritizes faster delivery and lower operational drag, while still keeping module boundaries ready for future split.",
+    microservices:
+      "The plan prioritizes team autonomy and independent scaling across domains, which reduces coordination bottlenecks as load grows.",
+    "event-driven":
+      "The plan prioritizes asynchronous throughput and loose coupling so high-variance traffic can be absorbed without blocking core flows.",
+  }[architectureStyle] || "The plan balances delivery speed and operational resilience for the current constraints.";
+
+  const riskCount = Array.isArray(plan?.recommendation?.risks) ? plan.recommendation.risks.length : 0;
+  const riskPosture = riskCount > 0
+    ? `There are ${riskCount} risk flag(s) to track in parallel with delivery.`
+    : "No critical risk flags were detected for the current constraints.";
+
+  return `${architectureReason} Deployment on ${deploymentLabel} keeps rollout practical for the selected region and cost guardrail of ${formatCurrency(
+    plan?.cost?.monthlyEstimate || 0,
+  )}. Priority implementation focus should start with ${topComponents || "the core service components"}. ${riskPosture}`;
+}
+
+function buildSummaryHighlights(plan, helpers) {
+  const { formatCurrency, getValueLabel } = helpers;
+  const componentCount = Array.isArray(plan?.recommendation?.components) ? plan.recommendation.components.length : 0;
+  const riskCount = Array.isArray(plan?.recommendation?.risks) ? plan.recommendation.risks.length : 0;
+  const growth = String(plan?.input?.expectedGrowth || "slow");
+  const scaleTrigger = growth === "fast" ? "Scale by traffic spikes" : growth === "moderate" ? "Scale by module pressure" : "Scale after evidence";
+
+  return [
+    { label: "Primary architecture bet", value: getValueLabel(plan?.recommendation?.architectureStyle || "layered-monolith") },
+    { label: "Delivery constraint", value: getValueLabel(plan?.recommendation?.costProfile || "balanced") },
+    { label: "Cost guardrail", value: formatCurrency(plan?.cost?.monthlyEstimate || 0) },
+    { label: "Complexity profile", value: `${componentCount} components, ${riskCount} risk flags` },
+    { label: "Scaling trigger", value: scaleTrigger },
+  ];
+}
+
 function normalizeDevelopmentPhases(plan) {
   if (!Array.isArray(plan.developmentPlan)) {
     return [];
@@ -98,9 +144,11 @@ function groupTechnologiesByCategory(technologies, copy) {
 }
 
 export function PlanDetails({ plan }) {
-  const { formatCurrency, getPlanSummary, getValueLabel, t, translateFixedText } = useI18n();
+  const { formatCurrency, getValueLabel, t, translateFixedText } = useI18n();
   const copy = RESULT_COPY;
   const summaryCards = buildSummaryCards(plan, { formatCurrency, getValueLabel, t });
+  const recommendationNarrative = buildRecommendationNarrative(plan, { formatCurrency, getValueLabel });
+  const summaryHighlights = buildSummaryHighlights(plan, { formatCurrency, getValueLabel });
   const decisionPoints = buildDecisionPoints(plan, { getValueLabel }, copy);
   const developmentPhases = normalizeDevelopmentPhases(plan);
   const roadmapTimeline = mapRoadmapTimeline(plan.roadmap);
@@ -131,7 +179,14 @@ export function PlanDetails({ plan }) {
       <div className="observability-grid">
         <article className="narrative-card decision-card observability-card">
           <h3>{t("plan.recommendationSummary")}</h3>
-          <p>{getPlanSummary(plan)}</p>
+          <p>{recommendationNarrative}</p>
+          <div className="decision-pill-grid">
+            {summaryHighlights.map((highlight) => (
+              <span key={highlight.label} className="decision-pill">
+                <strong>{highlight.label}:</strong> {highlight.value}
+              </span>
+            ))}
+          </div>
           <div className="decision-pill-grid">
             {decisionPoints.map((point) => (
               <span key={point} className="decision-pill">

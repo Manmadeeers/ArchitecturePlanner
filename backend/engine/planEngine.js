@@ -240,23 +240,43 @@ function buildRoadmap(input, recommendation, engineSettings, cost) {
     );
   }
 
-  roadmap.push(
-    `Week 1-2: deploy ${architectureLabel} on ${deploymentLabel} with one-click rollback and branch-to-environment pipeline.`,
-    `Week 2-3: release ${featureSummary} end-to-end with integration tests for the main business flow.`,
-    "Week 3-4: ship telemetry (p95 latency, error rate, DB saturation) and page on-call when error rate exceeds 1% for 10 minutes."
-  );
-
-  if (input.expectedGrowth === "slow") {
+  if (recommendation.architectureStyle === "layered-monolith") {
     roadmap.push(
-      "Checkpoint: keep monolith structure until either monthly active users exceed 5000 or p95 API latency stays above 400 ms for 3 consecutive days."
+      `Week 1-2: deploy ${architectureLabel} on ${deploymentLabel} with one-click rollback and branch-to-environment pipeline.`,
+      `Week 2-3: release ${featureSummary} inside a modular monolith boundary (API, domain, persistence layers).`,
+      "Week 3-4: enforce module contracts and measure p95 latency, DB saturation, and error rate before introducing service split."
     );
-  } else if (input.expectedGrowth === "moderate") {
+  } else if (recommendation.architectureStyle === "microservices") {
     roadmap.push(
-      "Checkpoint: modularize service boundaries by month 2 and prepare split-ready modules before monthly active users reach 15000."
+      `Week 1-2: stand up service template, API gateway, and service discovery on ${deploymentLabel}.`,
+      `Week 2-3: release ${featureSummary} across 2-3 bounded services with contract tests and independent CI pipelines.`,
+      "Week 3-4: add distributed tracing, per-service SLO dashboards, and timeout/retry budgets for inter-service calls."
     );
   } else {
     roadmap.push(
-      "Checkpoint: add queue processing and cache by month 2; enable horizontal autoscaling when average CPU remains above 65% during peak windows."
+      `Week 1-2: deploy ${architectureLabel} baseline on ${deploymentLabel} with queue broker and event schema registry.`,
+      `Week 2-3: deliver ${featureSummary} as event producers/consumers with idempotency keys and dead-letter routing.`,
+      "Week 3-4: validate outbox pattern, consumer lag alerts, and replay safety for critical domain events."
+    );
+  }
+
+  if (input.expectedGrowth === "slow") {
+    roadmap.push(
+      recommendation.architectureStyle === "microservices"
+        ? "Checkpoint: keep service count stable until monthly active users exceed 5000; optimize existing service boundaries before adding new services."
+        : "Checkpoint: keep current architecture shape until either monthly active users exceed 5000 or p95 API latency stays above 400 ms for 3 consecutive days."
+    );
+  } else if (input.expectedGrowth === "moderate") {
+    roadmap.push(
+      recommendation.architectureStyle === "event-driven"
+        ? "Checkpoint: split high-volume event consumers by month 2 and introduce partition strategy before monthly active users reach 15000."
+        : "Checkpoint: modularize service boundaries by month 2 and prepare split-ready modules before monthly active users reach 15000."
+    );
+  } else {
+    roadmap.push(
+      recommendation.architectureStyle === "layered-monolith"
+        ? "Checkpoint: add queue processing and cache by month 2; split the first bounded context into a separate service when average CPU remains above 65% during peak windows."
+        : "Checkpoint: scale consumers/services horizontally by month 2; enable autoscaling when average CPU remains above 65% during peak windows."
     );
   }
 

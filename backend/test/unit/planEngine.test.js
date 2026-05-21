@@ -135,6 +135,36 @@ test("generatePlan appends concrete roadmap milestones for idea stage, file uplo
   assert.ok(plan.roadmap.some((step) => step.startsWith("Cost checkpoint: keep monthly infrastructure spend below $")));
 });
 
+test("generatePlan builds architecture-specific roadmap milestones", () => {
+  const layeredPlan = generatePlan(
+    createValidInput({
+      monthlyUsers: 600,
+      expectedGrowth: "slow",
+    }),
+  );
+  const microservicesPlan = generatePlan(
+    createValidInput({
+      monthlyUsers: 4000,
+      expectedGrowth: "slow",
+    }),
+  );
+  const eventDrivenPlan = generatePlan(
+    createValidInput({
+      monthlyUsers: 25000,
+      expectedGrowth: "slow",
+    }),
+  );
+
+  assert.equal(layeredPlan.recommendation.architectureStyle, "layered-monolith");
+  assert.ok(layeredPlan.roadmap.some((step) => step.includes("modular monolith boundary")));
+
+  assert.equal(microservicesPlan.recommendation.architectureStyle, "microservices");
+  assert.ok(microservicesPlan.roadmap.some((step) => step.includes("bounded services with contract tests")));
+
+  assert.equal(eventDrivenPlan.recommendation.architectureStyle, "event-driven");
+  assert.ok(eventDrivenPlan.roadmap.some((step) => step.includes("event producers/consumers with idempotency keys")));
+});
+
 test("generatePlan applies region multiplier overrides from engine settings", () => {
   const plan = generatePlan(
     createValidInput({ targetRegion: "europe" }),
