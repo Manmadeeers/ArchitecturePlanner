@@ -149,6 +149,10 @@ const messages = {
       deleteConfirm: "Удалить проект {name}?",
       cardSummaryFull: "{architectureStyle}, {deploymentModel}, регион {region}.",
       cardSummaryShort: "{architectureStyle}, {deploymentModel}.",
+      scenarioSetSummary: "Scenario Simulator run with {count} scenarios.",
+      scenarioSetCount: "{count} scenarios",
+      deleteScenarioSet: "Delete scenario set",
+      deleteScenarioSetConfirm: "Delete scenario set {name}?",
     },
     plan: {
       architecture: "Архитектура",
@@ -362,6 +366,10 @@ const messages = {
       deleteConfirm: "Delete project {name}?",
       cardSummaryFull: "{architectureStyle}, {deploymentModel}, region {region}.",
       cardSummaryShort: "{architectureStyle}, {deploymentModel}.",
+      scenarioSetSummary: "Scenario Simulator run with {count} scenarios.",
+      scenarioSetCount: "{count} scenarios",
+      deleteScenarioSet: "Delete scenario set",
+      deleteScenarioSetConfirm: "Delete scenario set {name}?",
     },
     plan: {
       architecture: "Architecture",
@@ -580,6 +588,10 @@ const messages = {
       deleteConfirm: "Выдаліць праект {name}?",
       cardSummaryFull: "{architectureStyle}, {deploymentModel}, рэгіён {region}.",
       cardSummaryShort: "{architectureStyle}, {deploymentModel}.",
+      scenarioSetSummary: "Scenario Simulator run with {count} scenarios.",
+      scenarioSetCount: "{count} scenarios",
+      deleteScenarioSet: "Delete scenario set",
+      deleteScenarioSetConfirm: "Delete scenario set {name}?",
     },
     plan: {
       architecture: "Архітэктура",
@@ -1636,6 +1648,12 @@ export function I18nProvider({ children }) {
   }
 
   function getProjectSummary(project) {
+    if (project?.entryType === "scenario_set") {
+      return t("projects.scenarioSetSummary", {
+        count: project.scenarioCount || 0,
+      });
+    }
+
     const architectureStyle = getValueLabel(project.architectureStyle || "layered-monolith");
     const deploymentModel = project.deploymentModel ? getValueLabel(project.deploymentModel) : null;
     const region = project.targetRegion ? getValueLabel(project.targetRegion) : null;

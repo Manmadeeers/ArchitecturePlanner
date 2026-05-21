@@ -324,6 +324,65 @@ router.get("/", async (req, res, next) => {
   }
 });
 
+router.get("/scenario-sets/:scenarioSetId", async (req, res, next) => {
+  try {
+    const scenarioSet = await repository.getUserScenarioSetById(req.currentUser?.id, req.params.scenarioSetId);
+
+    if (!scenarioSet) {
+      return res.status(404).json({
+        error: "Scenario set not found for the current user.",
+      });
+    }
+
+    const baselineScenario = scenarioSet.scenarios.find((scenario) => scenario.scenarioKey === "baseline") || scenarioSet.scenarios[0];
+    const baselinePlan = baselineScenario?.plan || null;
+    const scenariosWithDelta = scenarioSet.scenarios.map((scenario) => {
+      const isBaseline = !baselinePlan || scenario.scenarioKey === baselineScenario?.scenarioKey;
+      return {
+        ...scenario,
+        delta: isBaseline
+          ? {
+              architectureChanged: false,
+              deploymentChanged: false,
+              monthlyEstimateDelta: 0,
+              monthlyEstimateDeltaPercent: 0,
+              addedComponents: [],
+              removedComponents: [],
+              addedRisks: [],
+              removedRisks: [],
+              reasons: ["Reference scenario for comparison."],
+            }
+          : buildScenarioDelta(baselinePlan, scenario.plan, scenario.inputOverrides),
+      };
+    });
+
+    return res.status(200).json({
+      scenarioSet: scenarioSet.scenarioSet,
+      scenarios: scenariosWithDelta,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.delete("/scenario-sets/:scenarioSetId", async (req, res, next) => {
+  try {
+    const deletedScenarioSet = await repository.deleteUserScenarioSetById(req.currentUser?.id, req.params.scenarioSetId);
+
+    if (!deletedScenarioSet) {
+      return res.status(404).json({
+        error: "Scenario set not found for the current user.",
+      });
+    }
+
+    return res.status(200).json({
+      deletedScenarioSet,
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
 router.delete("/:planId", async (req, res, next) => {
   try {
     const deletedPlan = await repository.deleteUserPlanByPlanId(req.currentUser?.id, req.params.planId);

@@ -1,5 +1,6 @@
 import { useI18n } from "../i18n";
 import { PlanDetails } from "./PlanDetails";
+import { ScenarioSetDetails } from "./ScenarioSetDetails";
 
 export function ProjectsPage({
   error,
@@ -30,33 +31,37 @@ export function ProjectsPage({
         ) : projects.length > 0 ? (
           <div className="project-card-grid">
             {projects.map((project) => {
-              const isActive = selectedProject?.plan?.planId === project.planId;
-              const isDeleting = projectDeleteInFlightId === project.planId;
+              const entryKey = `${project.entryType}:${project.entryId}`;
+              const isActive = selectedProject?.entryType === project.entryType && String(selectedProject?.entryId) === String(project.entryId);
+              const isDeleting = projectDeleteInFlightId === entryKey;
+              const isScenarioSet = project.entryType === "scenario_set";
 
               function handleDeleteProject() {
                 const projectName = project.projectName || t("common.notProvided");
                 onRequestConfirm({
-                  title: t("projects.delete"),
-                  message: t("projects.deleteConfirm", {
+                  title: isScenarioSet ? t("projects.deleteScenarioSet") : t("projects.delete"),
+                  message: isScenarioSet ? t("projects.deleteScenarioSetConfirm", {
+                    name: projectName,
+                  }) : t("projects.deleteConfirm", {
                     name: projectName,
                   }),
-                  confirmLabel: t("projects.delete"),
+                  confirmLabel: isScenarioSet ? t("projects.deleteScenarioSet") : t("projects.delete"),
                   cancelLabel: t("common.cancel"),
                 }).then((shouldDelete) => {
                   if (!shouldDelete) {
                     return;
                   }
 
-                  onDeleteProject(project.planId);
+                  onDeleteProject(project);
                 });
               }
 
               return (
-                <article key={project.planId} className={`project-card ${isActive ? "project-card-active" : ""}`}>
+                <article key={entryKey} className={`project-card ${isActive ? "project-card-active" : ""}`}>
                   <button
                     type="button"
                     className="project-card-surface"
-                    onClick={() => onSelectProject(project.planId)}
+                    onClick={() => onSelectProject(project)}
                     disabled={isDeleting}
                   >
                     <div className="project-card-topline">
@@ -65,14 +70,14 @@ export function ProjectsPage({
                     </div>
                     <p>{getProjectSummary(project)}</p>
                     <div className="project-card-meta">
-                      <span>{project.architectureStyle ? getValueLabel(project.architectureStyle) : t("projects.architectureTbd")}</span>
-                      <span>{project.monthlyEstimate ? formatCurrency(project.monthlyEstimate) : t("projects.noCostSaved")}</span>
+                      <span>{isScenarioSet ? t("scenarios.title") : (project.architectureStyle ? getValueLabel(project.architectureStyle) : t("projects.architectureTbd"))}</span>
+                      <span>{isScenarioSet ? t("projects.scenarioSetCount", { count: project.scenarioCount || 0 }) : (project.monthlyEstimate ? formatCurrency(project.monthlyEstimate) : t("projects.noCostSaved"))}</span>
                     </div>
                   </button>
 
                   <div className="project-card-actions">
                     <button type="button" className="danger-button" onClick={handleDeleteProject} disabled={isDeleting}>
-                      {isDeleting ? t("projects.deleting") : t("projects.delete")}
+                      {isDeleting ? t("projects.deleting") : (isScenarioSet ? t("projects.deleteScenarioSet") : t("projects.delete"))}
                     </button>
                   </div>
                 </article>
@@ -97,6 +102,8 @@ export function ProjectsPage({
           </div>
         ) : selectedProject?.plan ? (
           <PlanDetails plan={selectedProject.plan} />
+        ) : selectedProject?.entryType === "scenario_set" ? (
+          <ScenarioSetDetails scenarioSet={selectedProject.scenarioSet} scenarios={selectedProject.scenarios} />
         ) : (
           <div className="empty-state">
             <p>{t("projects.selectProject")}</p>

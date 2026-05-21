@@ -6,8 +6,12 @@ import { useI18n } from "../i18n";
 import { normalizeCurrentUser } from "../utils/formatters";
 
 const defaultSelectedProject = {
+  entryId: null,
+  entryType: null,
   plan: null,
   savedPlan: null,
+  scenarioSet: null,
+  scenarios: [],
 };
 
 function normalizeProfileField(value) {
@@ -306,12 +310,13 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
       const nextProjects = data.plans || [];
       setProjects(nextProjects);
 
-      const selectedPlanId = selectedProject?.plan?.planId;
+      const selectedEntryId = selectedProject?.entryId;
+      const selectedEntryType = selectedProject?.entryType;
 
       if (nextProjects.length === 0) {
         setSelectedProject(defaultSelectedProject);
-      } else if (!nextProjects.some((project) => project.planId === selectedPlanId)) {
-        await selectProject(nextProjects[0].planId);
+      } else if (!nextProjects.some((project) => String(project.entryId) === String(selectedEntryId) && project.entryType === selectedEntryType)) {
+        await selectProject(nextProjects[0]);
       }
     } catch (loadError) {
       setError(loadError.message);
@@ -353,8 +358,19 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
     }
   }
 
-  async function selectProject(planId) {
-    if (!planId) {
+  async function selectProject(projectOrEntryId) {
+    if (!projectOrEntryId) {
+      return;
+    }
+
+    const selectedItem =
+      typeof projectOrEntryId === "object"
+        ? projectOrEntryId
+        : projects.find((project) => project.entryType === "plan" && project.planId === projectOrEntryId) ||
+          recentPlans.find((project) => project.entryType === "plan" && project.planId === projectOrEntryId) ||
+          null;
+
+    if (!selectedItem) {
       return;
     }
 
@@ -362,19 +378,45 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
     setError("");
 
     try {
+      if (selectedItem.entryType === "scenario_set") {
+        const { data } = await fetchJson(`/plans/scenario-sets/${encodeURIComponent(selectedItem.entryId)}`);
+        setSelectedProject({
+          entryId: selectedItem.entryId,
+          entryType: "scenario_set",
+          plan: null,
+          savedPlan: null,
+          scenarioSet: data.scenarioSet || null,
+          scenarios: data.scenarios || [],
+        });
+        return;
+      }
+
+      const planId = selectedItem.planId;
+
       if (planResponse?.plan?.planId === planId) {
         const savedPlan =
           projects.find((project) => project.planId === planId) || recentPlans.find((project) => project.planId === planId) || null;
 
         setSelectedProject({
+          entryId: selectedItem.entryId,
+          entryType: "plan",
           plan: planResponse.plan,
           savedPlan,
+          scenarioSet: null,
+          scenarios: [],
         });
         return;
       }
 
       const { data } = await fetchJson(`/plans/${encodeURIComponent(planId)}`);
-      setSelectedProject(data);
+      setSelectedProject({
+        entryId: selectedItem.entryId,
+        entryType: "plan",
+        plan: data.plan || null,
+        savedPlan: data.savedPlan || null,
+        scenarioSet: null,
+        scenarios: [],
+      });
     } catch (loadError) {
       setError(loadError.message);
     } finally {
@@ -382,30 +424,34 @@ export function usePlannerApp({ authMode, authUser, getAccessToken, isAuthentica
     }
   }
 
-  async function deleteProject(planId) {
-    if (!planId) {
+  async function deleteProject(project) {
+    if (!project?.entryId || !project?.entryType) {
       return false;
     }
 
-    setProjectDeleteInFlightId(planId);
+    const isScenarioSet = project.entryType === "scenario_set";
+    const entryKey = `${project.entryType}:${project.entryId}`;
+    setProjectDeleteInFlightId(entryKey);
     setError("");
 
     try {
-      await fetchJson(`/plans/${encodeURIComponent(planId)}`, {
+      await fetchJson(isScenarioSet ? `/plans/scenario-sets/${encodeURIComponent(project.entryId)}` : `/plans/${encodeURIComponent(project.planId)}`, {
         method: "DELETE",
       });
 
-      const nextProjects = projects.filter((project) => project.planId !== planId);
-      const nextRecentPlans = recentPlans.filter((project) => project.planId !== planId);
+      const nextProjects = projects.filter(
+        (entry) => !(entry.entryType === project.entryType && String(entry.entryId) === String(project.entryId)),
+      );
+      const nextRecentPlans = isScenarioSet ? recentPlans : recentPlans.filter((entry) => entry.planId !== project.planId);
 
       setProjects(nextProjects);
       setRecentPlans(nextRecentPlans);
 
-      if (selectedProject?.plan?.planId === planId) {
+      if (selectedProject?.entryType === project.entryType && String(selectedProject?.entryId) === String(project.entryId)) {
         setSelectedProject(defaultSelectedProject);
 
         if (nextProjects.length > 0) {
-          await selectProject(nextProjects[0].planId);
+          await selectProject(nextProjects[0]);
         }
       }
 
