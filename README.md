@@ -1,59 +1,122 @@
 # ArchitecturePlanner
 
-ArchitecturePlanner is a course-project MVP for startups and small companies that need a deterministic recommendation for application architecture, deployment style, and early infrastructure planning.
+ArchitecturePlanner is an MVP web app that generates deterministic architecture recommendations for early-stage software projects.
 
-## What the MVP includes
+It combines:
+- a questionnaire-driven planning API (Express + PostgreSQL)
+- a React frontend for interactive plan generation
+- Dockerized deployment with Nginx TLS proxying
 
-- `backend/`: Express API with questionnaire endpoint, deterministic rule engine, and plan generation endpoint.
-- `frontend/`: React interface for filling the questionnaire and viewing generated results.
-- `backend/db/schema.sql`: PostgreSQL schema with normalized project/plan-run storage, analytics-friendly indexes, and regional cache tables.
-- Diagram export support:
-  - `.drawio` generated from backend XML
-  - `.png` generated in the browser from the returned diagram model
+## Features
 
-## Main API endpoints
+- Deterministic plan generation from project constraints.
+- Scenario simulation endpoints for comparing architecture options.
+- Diagram export support (`.drawio` and browser-generated `.png`).
+- Admin workspace for user management, analytics, and engine settings.
+- Auth0-based authentication for SPA and protected API routes.
 
-- `GET /api/health`
-- `GET /api/questionnaire`
-- `POST /api/plans/generate`
-- `GET /api/plans/recent`
-- `GET /api/plans`
-- `GET /api/plans/:planId`
-- `GET /api/admin/users`
-- `PATCH /api/admin/users/:userId/role`
-- `GET /api/admin/analytics/overview`
-- `GET /api/admin/settings/engine`
-- `PATCH /api/admin/settings/engine`
+## Tech Stack
 
-## Backend run
+- Backend: Node.js, Express, PostgreSQL, Drizzle ORM
+- Frontend: React, Vite
+- Infra: Docker, Docker Compose, Nginx
+- Auth: Auth0
 
-Use the Node.js npm wrapper directly on this machine:
+## Project Structure
 
-```powershell
-& 'C:\Program Files\nodejs\npm.cmd' install
-& 'C:\Program Files\nodejs\npm.cmd' start
+```text
+.
+|- backend/         # Express API, rule engine, DB access, admin routes
+|- frontend/        # React SPA (Vite)
+|- db/              # PostgreSQL image and initialization assets
+|- nginx/           # Nginx config, Dockerfile, local TLS cert script
+|- docs/            # Project documentation
+|- test/            # Additional test assets
+`- docker-compose.yml
 ```
 
-Run those commands inside `backend/`.
-The backend only exposes API routes now; frontend static assets are expected to be served separately, for example by Nginx.
-Protected routes now also require Auth0 configuration from `backend/.env.example`.
+## Quick Start (Local Development)
 
-## Frontend run
+### 1. Prerequisites
 
-```powershell
-& 'C:\Program Files\nodejs\npm.cmd' install
-& 'C:\Program Files\nodejs\npm.cmd' run dev
+- Node.js 18+
+- npm 9+
+- PostgreSQL 14+ (optional if using Docker for DB)
+
+### 2. Backend setup
+
+```bash
+cd backend
+npm install
 ```
 
-Run those commands inside `frontend/`.
-Auth0 SPA configuration lives in `frontend/.env.example`.
+Update `backend/.env` with your environment values:
 
-## Auth0 setup
+```env
+DATABASE_URL=postgres://user:password@localhost:5432/architecture_planner
+DATABASE_SSL=false
+AUTH0_DOMAIN=your-tenant.us.auth0.com
+AUTH0_AUDIENCE=https://architectureplanner/api
+```
 
-Create these Auth0 resources:
+Start backend:
 
-- SPA application for the React frontend
-- API for the Express backend
+```bash
+npm start
+```
+
+Backend runs on `http://localhost:4000` by default.
+
+### 3. Frontend setup
+
+```bash
+cd frontend
+npm install
+```
+
+Create or update `frontend/.env`:
+
+```env
+VITE_API_BASE_URL=http://localhost:4000/api
+VITE_AUTH0_DOMAIN=your-tenant.us.auth0.com
+VITE_AUTH0_CLIENT_ID=your_auth0_spa_client_id
+VITE_AUTH0_AUDIENCE=https://architectureplanner/api
+VITE_AUTH0_REDIRECT_URI=http://localhost:5173
+VITE_AUTH0_LOGOUT_RETURN_TO=http://localhost:5173
+```
+
+Start frontend:
+
+```bash
+npm run dev
+```
+
+Frontend runs on `http://localhost:5173`.
+
+## Docker Deployment
+
+Generate local TLS certs (for local HTTPS on `20532`):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\nginx\generate-dev-certs.ps1
+```
+
+Start full stack:
+
+```bash
+docker compose up --build
+```
+
+Services:
+- PostgreSQL: `localhost:5432`
+- Backend: internal `backend:4000` (proxied by Nginx)
+- Nginx: `http://localhost` and `https://localhost:20532`
+
+## Authentication (Auth0)
+
+Create:
+- one SPA application (frontend)
+- one API (backend)
 
 Recommended API identifier:
 
@@ -61,112 +124,75 @@ Recommended API identifier:
 https://architectureplanner/api
 ```
 
-Then configure environment variables from:
-
-- `backend/.env.example`
-- `frontend/.env.example`
-
-Suggested local Auth0 dashboard URLs:
-
+For local frontend development (`http://localhost:5173`), configure:
 - Allowed Callback URLs: `http://localhost:5173`
 - Allowed Logout URLs: `http://localhost:5173`
 - Allowed Web Origins: `http://localhost:5173`
 
-When you run the SPA through Docker + Nginx instead of the Vite dev server, add these too:
-
+For Docker + Nginx local HTTPS (`https://localhost:20532`), also configure:
 - Allowed Callback URLs: `https://localhost:20532`
 - Allowed Logout URLs: `https://localhost:20532`
 - Allowed Web Origins: `https://localhost:20532`
 
-Auth0 matches callback URLs exactly, including protocol and port, so `http://localhost:5173` and `https://localhost:20532` must both be listed if you use both environments.
+## API Overview
 
-## Admin bootstrap
+Core endpoints:
+- `GET /api/health`
+- `GET /api/questionnaire`
+- `GET /api/auth/me`
+- `PATCH /api/auth/profile`
+- `POST /api/plans/generate`
+- `POST /api/plans/scenarios/generate`
+- `GET /api/plans/recent`
+- `GET /api/plans`
+- `GET /api/plans/:planId`
+- `DELETE /api/plans/:planId`
 
-Admin access is controlled by the local `users.role` column, while Auth0 remains the identity provider.
+Admin endpoints:
+- `GET /api/admin/users`
+- `PATCH /api/admin/users/:userId`
+- `PATCH /api/admin/users/:userId/role`
+- `DELETE /api/admin/users/:userId`
+- `GET /api/admin/analytics/overview`
+- `GET /api/admin/reports/analytics.pdf`
+- `GET /api/admin/settings/engine`
+- `PATCH /api/admin/settings/engine`
+- `GET /api/admin/technologies`
+- `POST /api/admin/technologies`
+- `PATCH /api/admin/technologies/:technologyId`
+- `DELETE /api/admin/technologies/:technologyId`
 
-Recommended first-admin flow:
+## Admin Bootstrap
 
-1. Sign in once through the app so the local `users` row is created.
-2. Promote that user from `backend/`:
+After first login creates a local user row, promote user to admin:
 
-```powershell
-& 'C:\Program Files\nodejs\npm.cmd' run admin:promote -- user@example.com
+```bash
+cd backend
+npm run admin:promote -- user@example.com
 ```
 
-If you are working from the Docker stack only, you can run the same promotion inside the backend container:
+Alternative (inside Docker container):
 
-```powershell
+```bash
 docker exec architectureplanner-backend node scripts/promote-admin.js user@example.com
 ```
 
-You can also promote a user manually in PostgreSQL:
+## Testing
 
-```sql
-update users
-set role = 'admin'
-where email = 'user@example.com';
+Backend tests:
+
+```bash
+cd backend
+npm test
 ```
 
-After promotion, the authenticated header menu exposes the admin workspace, where admins can:
+## Contributing
 
-- manage user roles
-- review system-wide analytics
-- update safe engine settings used by future plan generations
+1. Fork the repository.
+2. Create a feature branch.
+3. Make focused, tested changes.
+4. Open a pull request with clear context and validation steps.
 
-## Docker deployment
+## License
 
-The repository now includes:
-
-- `backend/Dockerfile`: production Node.js API image
-- `db/Dockerfile`: PostgreSQL image with schema initialization baked in
-- `nginx/Dockerfile`: multi-stage image that builds the frontend and serves it from Nginx
-- `nginx/default.conf`: HTTPS reverse proxy and SPA/static file config
-- `docker-compose.yml`: Postgres + backend + Nginx stack
-
-Expected certificate files for the Nginx container:
-
-- `nginx/certs/fullchain.pem`
-- `nginx/certs/privkey.pem`
-
-For local development, you can generate a self-signed pair without installing OpenSSL on Windows:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\nginx\generate-dev-certs.ps1
-```
-
-The frontend production build uses:
-
-```text
-VITE_API_BASE_URL=/api
-```
-
-so Nginx can proxy API traffic to the backend container on the same origin.
-The Docker frontend build also reads `frontend/.env`, so your `VITE_AUTH0_DOMAIN`, `VITE_AUTH0_CLIENT_ID`, and `VITE_AUTH0_AUDIENCE` values are baked into the SPA image together with the production redirect URL from `frontend/.env.production`.
-
-To start the stack:
-
-```powershell
-docker compose up --build
-```
-
-The compose file:
-
-- builds PostgreSQL from `db/Dockerfile` and applies `backend/db/schema.sql` at every database container startup (idempotent: existing data is preserved)
-- runs the backend against the `db` service over the internal Docker network
-- exposes Nginx on ports `80` and `20532`
-
-## Database setup
-
-Create a PostgreSQL database and apply:
-
-```sql
-\i backend/db/schema.sql
-```
-
-Then set:
-
-```powershell
-$env:DATABASE_URL="postgres://user:password@localhost:5432/architecture_planner"
-```
-
-If `DATABASE_URL` is not set, the API still generates plans but does not persist them.
+No root `LICENSE` file is currently included. Add one before publishing this repository as open source.
